@@ -45,7 +45,34 @@ public static class AppState
     public static string SaveDir => string.IsNullOrWhiteSpace(Settings.SaveDir) ? GameLocator.DefaultSaveDir : Settings.SaveDir!;
     public static string RulesPath => GameLocator.RulesPath(SaveDir);
     public static string CompanionDir => GameLocator.CompanionDir(SaveDir);
-    public static string HooksDll => Path.Combine(AppContext.BaseDirectory, "TerraCompanion.Hooks.dll");
+    /// <summary>
+    /// The hooks DLL the patcher installs. Uses the copy next to the app when there is one (normal builds),
+    /// otherwise extracts the copy embedded in the exe (single-file download).
+    /// </summary>
+    public static string HooksDll
+    {
+        get
+        {
+            var beside = Path.Combine(AppContext.BaseDirectory, "TerraCompanion.Hooks.dll");
+            if (File.Exists(beside)) return beside;
+            var extracted = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TerraCompanion", "TerraCompanion.Hooks.dll");
+            try
+            {
+                using var res = typeof(AppState).Assembly.GetManifestResourceStream("TerraCompanion.Hooks.dll");
+                if (res == null) return beside;
+                using var ms = new MemoryStream();
+                res.CopyTo(ms);
+                var bytes = ms.ToArray();
+                if (!File.Exists(extracted) || !File.ReadAllBytes(extracted).AsSpan().SequenceEqual(bytes))
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(extracted)!);
+                    File.WriteAllBytes(extracted, bytes);
+                }
+                return extracted;
+            }
+            catch { return File.Exists(extracted) ? extracted : beside; }
+        }
+    }
 
     static DispatcherTimer? _saveTimer;
     static DateTime _lastSavedStamp;

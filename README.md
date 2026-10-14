@@ -9,22 +9,28 @@ A Windows companion app for **vanilla Terraria** (built and tested against 1.4.5
 - **Character Editor**: name, difficulty, life and mana, permanent upgrades, colors, inventory, coins and ammo, armor, accessories, vanity and dyes, pets/mounts/hooks, Piggy Bank, Safe, Defender's Forge, Void Vault, and buffs. A timestamped backup is made before every save.
 - **Raw Rules**: edit the rules file directly.
 
-## Run it
+## Download
 
-Requires the .NET 8 SDK (or Desktop Runtime to run a published build).
+Grab **`TerraCompanion.exe`** from the [latest release](https://github.com/Izunalol/TerraCompanion/releases/latest). It is a single file for 64-bit Windows with nothing to install (no .NET needed). Put it anywhere and run it.
+
+The exe isn't code-signed, so Windows SmartScreen may say "Windows protected your PC" the first time. Click **More info → Run anyway**, or build it yourself from source (below).
+
+## Build from source
+
+Requires the .NET 8 SDK.
 
 ```
 dotnet build TerraCompanion.sln -c Release
 src\TerraCompanion.App\bin\Release\net8.0-windows\TerraCompanion.exe
 ```
 
-or publish a standalone folder:
+or build the same single-file exe as the release:
 
 ```
-dotnet publish src\TerraCompanion.App -c Release -o publish
+dotnet publish src\TerraCompanion.App -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:DebugType=none -o publish
 ```
 
-`TerraCompanion.Hooks.dll` must stay next to `TerraCompanion.exe`, because the patcher copies it into the game folder.
+The hooks DLL that gets installed into the game is embedded in the exe, so `publish\TerraCompanion.exe` is all you need.
 
 ## How the "no tModLoader" part works
 
@@ -70,4 +76,6 @@ Group rules run first, then id rules, so an id rule always wins. Fields are any 
 | `src/TerraCompanion.App` | WPF app |
 | `tools/SelfTest` | Developer checks: `players`, `world`, `gamedata`, `xnb`, `patch`, `edit` (run against copies of your files) |
 
-Not affiliated with or endorsed by Re-Logic.
+## License
+
+[MIT](LICENSE). Not affiliated with or endorsed by Re-Logic; Terraria is a trademark of Re-Logic.
