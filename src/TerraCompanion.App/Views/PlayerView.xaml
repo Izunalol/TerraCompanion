@@ -1,0 +1,109 @@
+<UserControl x:Class="TerraCompanion.App.Views.PlayerView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="210"/>
+      <ColumnDefinition Width="18"/>
+      <ColumnDefinition/>
+    </Grid.ColumnDefinitions>
+
+    <!-- character list -->
+    <DockPanel>
+      <TextBlock DockPanel.Dock="Top" Style="{StaticResource H1}" Text="Characters"/>
+      <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
+        <Button Content="↻ Refresh" Click="Refresh_Click"/>
+        <Button Content="Open file..." Click="OpenFile_Click"/>
+      </StackPanel>
+      <ListBox x:Name="PlayerList" SelectionChanged="PlayerList_SelectionChanged">
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <StackPanel Margin="0,3">
+              <TextBlock Text="{Binding Title}" FontWeight="SemiBold"/>
+              <TextBlock Text="{Binding Sub}" FontSize="11" Foreground="{StaticResource Muted}"/>
+            </StackPanel>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </DockPanel>
+
+    <Grid Grid.Column="2">
+      <TextBlock x:Name="EmptyText" Text="Pick a character on the left." Foreground="{StaticResource Muted}" FontSize="15"
+                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
+      <DockPanel x:Name="EditorRoot" Visibility="Collapsed">
+        <!-- header -->
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+            <Button x:Name="RevertButton" Content="Revert" Click="Revert_Click"/>
+            <Button x:Name="SaveButton" Content="Save character" Style="{StaticResource Primary}" Click="Save_Click" Margin="0"/>
+          </StackPanel>
+          <StackPanel>
+            <TextBlock x:Name="HeaderName" FontSize="22" FontWeight="SemiBold"/>
+            <TextBlock x:Name="HeaderSub" Style="{StaticResource Hint}"/>
+          </StackPanel>
+        </DockPanel>
+        <Border x:Name="WarningBar" DockPanel.Dock="Top" Background="#3A2E14" CornerRadius="4" Padding="10,6" Margin="0,6,0,0" Visibility="Collapsed">
+          <TextBlock x:Name="WarningText" Foreground="{StaticResource Warn}" TextWrapping="Wrap"/>
+        </Border>
+
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition/>
+            <ColumnDefinition Width="Auto"/>
+          </Grid.ColumnDefinitions>
+          <TabControl x:Name="Tabs" SelectionChanged="Tabs_SelectionChanged">
+            <TabItem Header="Stats &amp; Looks"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel x:Name="StatsPanel" Margin="0,0,10,10"/></ScrollViewer></TabItem>
+            <TabItem Header="Inventory"><ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"><StackPanel x:Name="InventoryPanel"/></ScrollViewer></TabItem>
+            <TabItem Header="Equipment"><ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel x:Name="EquipmentPanel"/></ScrollViewer></TabItem>
+            <TabItem Header="Storage"><ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"><StackPanel x:Name="StoragePanel"/></ScrollViewer></TabItem>
+            <TabItem Header="Buffs"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel x:Name="BuffsPanel" Margin="0,0,10,10"/></ScrollViewer></TabItem>
+          </TabControl>
+
+          <!-- slot editor -->
+          <Border x:Name="SlotEditor" Grid.Column="1" Visibility="Collapsed" Width="290" Margin="14,44,0,0" Style="{StaticResource Card}" VerticalAlignment="Stretch">
+            <DockPanel>
+              <StackPanel DockPanel.Dock="Top">
+                <TextBlock x:Name="SlotTitle" Text="Click a slot" FontWeight="SemiBold" Foreground="{StaticResource Gold}"/>
+                <DockPanel Margin="0,8,0,0">
+                  <Border DockPanel.Dock="Left" Width="52" Height="52" Background="#2A3A6B" CornerRadius="5" Margin="0,0,10,0">
+                    <Image x:Name="SlotIcon" Stretch="Uniform" StretchDirection="DownOnly" Margin="4" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+                  </Border>
+                  <TextBlock x:Name="SlotItemName" VerticalAlignment="Center" TextWrapping="Wrap" FontSize="14"/>
+                </DockPanel>
+                <Grid Margin="0,10,0,0">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="70"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                  <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                  <TextBlock Text="Stack" VerticalAlignment="Center"/>
+                  <TextBox x:Name="StackBox" Grid.Column="1" LostFocus="StackBox_Commit" KeyDown="StackBox_KeyDown"/>
+                  <Button x:Name="MaxStackButton" Grid.Column="2" Content="Max" Margin="6,0,0,0" Padding="8,4" Click="MaxStack_Click"/>
+                  <TextBlock Grid.Row="1" Text="Modifier" VerticalAlignment="Center" Margin="0,6,0,0"/>
+                  <ComboBox x:Name="PrefixBox" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,6,0,0" SelectionChanged="PrefixBox_SelectionChanged"/>
+                  <CheckBox x:Name="FavoriteBox" Grid.Row="2" Grid.Column="1" Content="Favorited" Margin="0,8,0,0" Click="Favorite_Click"/>
+                </Grid>
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                  <Button Content="Clear slot" Style="{StaticResource Danger}" Click="ClearSlot_Click"/>
+                </StackPanel>
+                <TextBlock Text="Change item" FontWeight="SemiBold" Margin="0,14,0,6"/>
+                <Grid>
+                  <TextBox x:Name="ItemSearch" TextChanged="ItemSearch_TextChanged"/>
+                  <TextBlock x:Name="ItemSearchHint" Text="Search all items by name or ID..." IsHitTestVisible="False" Margin="8,5,0,0" Foreground="{StaticResource Muted}"/>
+                </Grid>
+              </StackPanel>
+              <ListBox x:Name="ItemResults" Margin="0,6,0,0" SelectionChanged="ItemResults_SelectionChanged" MinHeight="120">
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <DockPanel Height="26">
+                      <Image DockPanel.Dock="Left" Width="24" Height="24" Margin="0,0,8,0" Source="{Binding Icon}" Stretch="Uniform" StretchDirection="DownOnly" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+                      <TextBlock DockPanel.Dock="Right" Text="{Binding Id}" Foreground="{StaticResource Muted}" FontSize="10" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                      <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                    </DockPanel>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </DockPanel>
+          </Border>
+        </Grid>
+      </DockPanel>
+    </Grid>
+  </Grid>
+</UserControl>

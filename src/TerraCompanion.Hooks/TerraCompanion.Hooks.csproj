@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Loaded inside Terraria.exe (.NET Framework 4, 32-bit). Must not depend on anything but mscorlib/System. -->
+  <PropertyGroup>
+    <TargetFramework>net40</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AssemblyName>TerraCompanion.Hooks</AssemblyName>
+    <RootNamespace>TerraCompanion.Hooks</RootNamespace>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+</Project>
