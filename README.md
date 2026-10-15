@@ -75,6 +75,7 @@ Group rules run first, then id rules, so an id rule always wins. Fields are any 
 | `src/TerraCompanion.Hooks` | .NET Framework 4.0 DLL loaded by the patched game (reflection only, no game reference) |
 | `src/TerraCompanion.App` | WPF app |
 | `tools/SelfTest` | Developer checks: `players`, `world`, `gamedata`, `xnb`, `patch`, `edit` (run against copies of your files) |
+| `tools/IconGen` | Draws the pixel-art tree app icon (`dotnet run --project tools/IconGen -- <outDir>`) |
 
 ## License
 

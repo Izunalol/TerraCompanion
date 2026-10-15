@@ -10,7 +10,8 @@
     <AssemblyName>TerraCompanion</AssemblyName>
     <RootNamespace>TerraCompanion.App</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>1.0.0</Version>
+    <ApplicationIcon>Assets/TerraCompanion.ico</ApplicationIcon>
+    <Version>1.1.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -28,6 +29,11 @@
   <ItemGroup>
     <!-- Also embedded, so a single-file TerraCompanion.exe can patch the game on its own. -->
     <EmbeddedResource Include="..\TerraCompanion.Hooks\bin\$(Configuration)\net40\TerraCompanion.Hooks.dll" LogicalName="TerraCompanion.Hooks.dll" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets/TerraCompanion.ico" />
+    <Resource Include="Assets/TreeIcon.png" />
   </ItemGroup>
 
   <Target Name="CopyHooks" AfterTargets="Build">
