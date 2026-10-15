@@ -62,6 +62,8 @@ Group rules run first, then id rules, so an id rule always wins. Fields are any 
 
 ## Notes and limits
 
+- **Spawn rate baseline:** 1× in the spawn sliders is always true vanilla (spawn delay 600, max enemies 5), even if your `Terraria.exe` was hand-edited to spawn faster. The World Rules page warns when it detects that.
+
 - **Multiplayer:** rules only affect the game where the patch is installed. Item and NPC changes count in multiplayer only if the host or dedicated server is patched with the same rules (the Game page can also patch `TerrariaServer.exe`).
 - **Character editing:** edit characters while they are not loaded in game, or the game overwrites the file on its next save. Steam Cloud characters are listed but may be re-synced by Steam. Saves from release 230 (1.4.0) up to 326 (1.4.5) are supported. Older saves are written back in their own format, and the game upgrades them on load. Only the active equipment loadout is editable; the other two are preserved.
 - In 1.4.5 the game caps max life at 500 and max mana at 200 when loading a character.

@@ -18,7 +18,11 @@ namespace TerraCompanion.Hooks
     /// </summary>
     public static class GameHooks
     {
-        public const string Version = "2";
+        public const string Version = "3";
+
+        // Terraria's true vanilla spawn settings. The multipliers in rules.txt are relative to these, NOT to whatever
+        // the exe happens to contain (a hand-edited exe may already spawn several times faster).
+        const int VanillaSpawnRate = 600, VanillaMaxSpawns = 5;
 
         static readonly object Sync = new object();
         static volatile RuleSet _rules = new RuleSet();
@@ -294,8 +298,10 @@ namespace TerraCompanion.Hooks
             var max = npc.GetField("defaultMaxSpawns", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
             if (rate != null && max != null)
             {
-                int origRate = (int)Original("Terraria.NPC.defaultSpawnRate", rate);
-                int origMax = (int)Original("Terraria.NPC.defaultMaxSpawns", max);
+                Original("Terraria.NPC.defaultSpawnRate", rate);
+                int origRate = VanillaSpawnRate;
+                Original("Terraria.NPC.defaultMaxSpawns", max);
+                int origMax = VanillaMaxSpawns;
                 wanted["Terraria.NPC.defaultSpawnRate"] = new KeyValuePair<FieldInfo, object>(rate, Math.Max(1, (int)Math.Round(origRate / rules.SpawnRate)));
                 wanted["Terraria.NPC.defaultMaxSpawns"] = new KeyValuePair<FieldInfo, object>(max, Math.Max(0, (int)Math.Round(origMax * rules.MaxSpawns)));
             }

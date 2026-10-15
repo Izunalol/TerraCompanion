@@ -61,6 +61,15 @@ public partial class TweaksView : UserControl, IPage
     {
         var rules = AppState.Rules;
         SpawnPanel.Children.Clear();
+        var sd = AppState.Game?.StaticDefaults;
+        if (sd != null && sd.TryGetValue("Terraria.NPC.defaultSpawnRate", out int exeRate) && sd.TryGetValue("Terraria.NPC.defaultMaxSpawns", out int exeMax)
+            && (exeRate != 600 || exeMax != 5))
+            SpawnPanel.Children.Add(new TextBlock
+            {
+                TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8), Foreground = (System.Windows.Media.Brush)FindResource("Warn"),
+                Text = $"Your Terraria.exe was already modified: it spawns {600.0 / exeRate:0.#}× faster and allows {exeMax / 5.0:0.#}× more enemies than vanilla. " +
+                       "While patched, the values below replace that - 1× is true vanilla."
+            });
         SpawnPanel.Children.Add(SliderRow("Spawn rate", "How often enemies spawn. 2× = twice as often, 0.25× = rarely. (Battle / Water Candle effects still stack on top.)",
             rules.SpawnRate, 0.05, 20, v => { AppState.Rules.SpawnRate = v; AppState.RulesEdited(); }));
         SpawnPanel.Children.Add(SliderRow("Max enemies", "How many enemies can be around you at once.",
