@@ -75,6 +75,8 @@ public partial class TweaksView : UserControl, IPage
         SpawnPanel.Children.Add(SliderRow("Max enemies", "How many enemies can be around you at once.",
             rules.MaxSpawns, 0.1, 20, v => { AppState.Rules.MaxSpawns = v; AppState.RulesEdited(); }));
 
+        BuildDisplay();
+
         CooldownPanel.Children.Clear();
         foreach (var (key, label, _) in Cooldowns) CooldownPanel.Children.Add(CooldownRow(key, label));
         CooldownPanel.Children.Add(DialRow("Enchanted Sundial cooldown", "Terraria.Main.Sundialing", "dawns",
@@ -91,6 +93,60 @@ public partial class TweaksView : UserControl, IPage
         foreach (var p in ItemPresets) ItemPanel.Children.Add(PresetRow(p));
         NpcPanel.Children.Clear();
         foreach (var p in NpcPresets) NpcPanel.Children.Add(PresetRow(p));
+    }
+
+    const string WideScreenKey = "Terraria.Main.SupportWideScreen";
+
+    /// <summary>
+    /// Terraria forces a minimum zoom of max(1, width/1920, height/1200), so above 1080p the view is just
+    /// magnified and you never see more world. Its own (hidden) SupportWideScreen switch removes that.
+    /// </summary>
+    void BuildDisplay()
+    {
+        DisplayPanel.Children.Clear();
+        bool on = AppState.Rules.Statics.TryGetValue(WideScreenKey, out var v) && v.Equals("true", StringComparison.OrdinalIgnoreCase);
+        var res = GameConfig.ReadResolution(AppState.SaveDir);
+        string size = res is { } r ? $"{r.width}×{r.height}" : "your resolution";
+        double zoom = res is { } z ? Math.Max(1.0, Math.Max(z.width / 1920.0, z.height / 1200.0)) : 1;
+
+        var cb = new CheckBox
+        {
+            IsChecked = on, Margin = new Thickness(0, 0, 0, 4),
+            Content = new TextBlock { Text = "Unlock the resolution / zoom cap (use my full native resolution)", FontWeight = FontWeights.SemiBold }
+        };
+        cb.Click += (_, _) =>
+        {
+            if (cb.IsChecked == true)
+            {
+                AppState.Rules.Statics[WideScreenKey] = "true";
+                if (!GameLocator.IsGameRunning() && GameConfig.EnableSupport4K(AppState.SaveDir))
+                    MainWindow.Instance?.SetStatus("Also switched on Terraria's own Support4K option in config.json (backup: config.json.tcbak).");
+            }
+            else AppState.Rules.Statics.Remove(WideScreenKey);
+            AppState.RulesEdited(this);
+            BuildDisplay();
+        };
+        DisplayPanel.Children.Add(cb);
+        DisplayPanel.Children.Add(new TextBlock
+        {
+            Style = (Style)FindResource("Hint"), Margin = new Thickness(22, 0, 0, 6),
+            Text = zoom > 1.0
+                ? $"Vanilla Terraria never shows more than a 1920×1200 area: at {size} it forces a {zoom:0.##}× minimum zoom, so everything is just magnified. " +
+                  $"Unlocked, the game renders at the full {size} and the zoom slider starts at 1× (native)."
+                : "Vanilla Terraria never shows more than a 1920×1200 area and magnifies the view on bigger screens. Unlocked, the game renders at your full resolution."
+        });
+        DisplayPanel.Children.Add(new TextBlock
+        {
+            Style = (Style)FindResource("Hint"), Margin = new Thickness(22, 0, 0, 0), Foreground = (System.Windows.Media.Brush)FindResource("Warn"),
+            Text = "Restart Terraria for the full effect. Up to 4096 px per side. Rain, falling stars and enemy-spawn areas still use the vanilla 1920×1200 region, so the outer edge of a very wide view can look emptier."
+        });
+
+        if (GameConfig.ReadSupport4K(AppState.SaveDir) == false)
+            DisplayPanel.Children.Add(new TextBlock
+            {
+                Style = (Style)FindResource("Hint"), Margin = new Thickness(22, 8, 0, 0), Foreground = (System.Windows.Media.Brush)FindResource("Bad"),
+                Text = "Terraria's own \"Support4K\" option is off in config.json. It will be switched on when you tick this box (game closed)."
+            });
     }
 
     // ---------------------------------------------------------------- rows
@@ -245,6 +301,7 @@ public partial class TweaksView : UserControl, IPage
         r.SpawnRate = r.MaxSpawns = 1;
         foreach (var (key, _, _) in Cooldowns) r.Statics.Remove(key);
         r.SundialDays = r.MoondialDays = null;
+        r.Statics.Remove(WideScreenKey);
         foreach (var p in ItemPresets) foreach (var x in p.Rules) r.Set(r.Items, x.sel, x.field, null);
         foreach (var p in NpcPresets) foreach (var x in p.Rules) r.Set(r.Npcs, x.sel, x.field, null);
         AppState.RulesEdited(this);

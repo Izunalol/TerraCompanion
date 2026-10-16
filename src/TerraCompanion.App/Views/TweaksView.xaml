@@ -14,6 +14,11 @@
         <StackPanel x:Name="SpawnPanel"/>
       </Border>
 
+      <TextBlock Style="{StaticResource H2}" Text="Display"/>
+      <Border Style="{StaticResource Card}">
+        <StackPanel x:Name="DisplayPanel"/>
+      </Border>
+
       <TextBlock Style="{StaticResource H2}" Text="Cooldowns"/>
       <Border Style="{StaticResource Card}">
         <StackPanel x:Name="CooldownPanel"/>

@@ -135,6 +135,8 @@ switch (args[0])
         break;
     }
 
+    case "config": failures += ConfigTest.Run(args[1], args[2]); break;
+
     case "xnb":
     {
         var files = Directory.GetFiles(Path.Combine(args[1], "Images"), "Item_*.xnb");
@@ -179,4 +181,24 @@ static uint Hash(ushort t)
 {
     uint h = (uint)t * 2654435761u;
     return 0xFF000000 | (h & 0x00FFFFFF);
+}
+
+static class ConfigTest
+{
+    public static int Run(string realConfig, string dir)
+    {
+        Directory.CreateDirectory(dir);
+        var original = File.ReadAllText(realConfig);
+        var off = System.Text.RegularExpressions.Regex.Replace(original, @"""Support4K"":\s*true", @"""Support4K"": false");
+        File.WriteAllText(Path.Combine(dir, "config.json"), off);
+        var before = TerraCompanion.Core.Game.GameConfig.ReadSupport4K(dir);
+        bool changed = TerraCompanion.Core.Game.GameConfig.EnableSupport4K(dir);
+        var after = TerraCompanion.Core.Game.GameConfig.ReadSupport4K(dir);
+        bool again = TerraCompanion.Core.Game.GameConfig.EnableSupport4K(dir);
+        var text = File.ReadAllText(Path.Combine(dir, "config.json"));
+        bool identical = text == original; // flipping false->true must reproduce the real file exactly
+        var res = TerraCompanion.Core.Game.GameConfig.ReadResolution(dir);
+        Console.WriteLine($"Support4K before={before} changed={changed} after={after} secondCall={again} restoredExactly={identical} backup={File.Exists(Path.Combine(dir, "config.json.tcbak"))} resolution={res}");
+        return before == false && changed && after == true && !again && identical && res == (2560, 1440) ? 0 : 1;
+    }
 }
