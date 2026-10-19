@@ -18,7 +18,7 @@ namespace TerraCompanion.Hooks
     /// </summary>
     public static class GameHooks
     {
-        public const string Version = "5";
+        public const string Version = "6";
 
         // Terraria's true vanilla spawn settings. The multipliers in rules.txt are relative to these, NOT to whatever
         // the exe happens to contain (a hand-edited exe may already spawn several times faster).
@@ -84,6 +84,9 @@ namespace TerraCompanion.Hooks
 
         /// <summary>Called from Player.Update right after the vanilla pet / light pet update.</summary>
         public static void UpdateExtraPets(object player, int index) { ExtraSlots.Update(player, index); }
+
+        /// <summary>Called at the end of Main.GetProjectileDesiredShader: lets a dye in an extra pet slot recolour that pet.</summary>
+        public static int PetShader(int vanilla, object projectile) { return ExtraSlots.Shader(vanilla, projectile); }
 
         /// <summary>Player.ResetEffects stores the base minion count (vanilla 1) through this every frame.</summary>
         public static int MinionBase(int vanilla)

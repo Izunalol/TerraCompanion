@@ -140,6 +140,25 @@ public static class Patcher
             ? "Hooked Player.Update (extra pet slots apply their pets)."
             : "Player.Update pet step not recognised: extra pet slots disabled.");
 
+        // Dyes for the extra pet slots: Main.GetProjectileDesiredShader(Projectile) returns the shader id for a projectile;
+        // let the hook override it for pets that sit in one of our slots.
+        var shaderPicker = mod.GetType("Terraria.Main")?.Methods.FirstOrDefault(x => x.Name == "GetProjectileDesiredShader" && x.IsStatic && x.Parameters.Count == 1
+                                                                                  && x.ReturnType.MetadataType == MetadataType.Int32 && x.HasBody);
+        var shaderRets = shaderPicker?.Body.Instructions.Where(i => i.OpCode == OpCodes.Ret).ToList();
+        if (shaderPicker != null && shaderRets!.Count > 0)
+        {
+            var il = shaderPicker.Body.GetILProcessor();
+            foreach (var ret in shaderRets)
+            {
+                var first = il.Create(OpCodes.Ldarg_0);
+                il.InsertBefore(ret, first);
+                il.InsertBefore(ret, il.Create(OpCodes.Call, Hook("PetShader")));
+                RetargetBranches(shaderPicker.Body, ret, first);
+            }
+            log.Add("Hooked Main.GetProjectileDesiredShader (dyes for the extra pet slots).");
+        }
+        else log.Add("Projectile shader selection not recognised: dyes for the extra pet slots disabled.");
+
         // Marker type so we can recognise a patched exe.
         mod.Types.Add(new TypeDefinition("", MarkerAttribute, TypeAttributes.NotPublic | TypeAttributes.Sealed | TypeAttributes.Abstract, mod.TypeSystem.Object));
 

@@ -121,16 +121,16 @@ public partial class TweaksView : UserControl, IPage
             Style = (Style)FindResource("Hint"), Margin = new Thickness(26, 0, 0, 4),
             Text = AppState.Rules.PetSlots
                 ? (extraPets + extraLights > 0
-                    ? $"The Equipment tab (the paper-doll tab) gets {extraPets} extra pet slot(s) and {extraLights} extra light pet slot(s), drawn to the left of the pet and light pet rows. "
+                    ? $"The Equipment tab (the paper-doll tab) gets {extraPets} extra pet slot(s) and {extraLights} extra light pet slot(s), drawn to the left of the pet and light pet rows, each with its own dye slot on its left. "
                     : "Raise Pets at once or Light pets at once to get extra slots on the Equipment tab (one extra slot per extra pet, up to 4). ") +
-                  "Put a pet item in a slot and the pet is summoned, just like the normal slots."
+                  "Put a pet item in a slot and the pet is summoned; put a dye next to it and that pet is recoloured, just like the normal slots."
                 : "Off: extra pets are still allowed, but only through the normal pet slot, using pet items, or the Character Editor's Buffs tab."
         });
         SummonPanel.Children.Add(new TextBlock
         {
             Style = (Style)FindResource("Hint"), Margin = new Thickness(26, 0, 0, 0),
             Text = "The extra slots are kept per character in the TerraCompanion folder (not inside the character file, so the file stays compatible with every Terraria). " +
-                   "They have no dye slot, and other players can't see the slots (they do see your pets). Restart Terraria after changing these settings. " +
+                   "Other players can't see the slots or the dyes (they do see your pets, in their normal colours). Restart Terraria after changing these settings. " +
                    "Minion and pet changes only matter on the machine of the player who owns them."
         });
     }

@@ -25,7 +25,8 @@ namespace TerraCompanion.Hooks
     {
         const int MaxExtra = 4;     // extra slots per kind (so up to 5 pets and 5 light pets in total)
         const int ColumnStep = 47;  // the game spaces slot columns / rows 47 px apart
-        const int PetContext = 19, LightContext = 20; // ItemSlot.Context.EquipPet / EquipLight
+        const int InventoryRightEdge = 600; // extra slots never go further left than this, so they stay clear of the inventory
+        const int PetContext = 19, LightContext = 20, DyeContext = 33; // ItemSlot.Context.EquipPet / EquipLight / EquipMiscDye
 
         static bool _init, _dead;
         static int _failures;
@@ -34,10 +35,12 @@ namespace TerraCompanion.Hooks
         static Type _itemT, _vec2T, _colorT;
         static MethodInfo _draw, _handle, _setDefaults, _prefix, _findBuff, _addBuff;
         static FieldInfo _mouseX, _mouseY, _scale, _spriteBatch, _armorHide, _myPlayer, _players, _vanityPet, _lightPet, _activeFile, _invBack;
-        static FieldInfo _fType, _fStack, _fPrefix, _fBuff, _fMouseInterface;
+        static FieldInfo _fType, _fStack, _fPrefix, _fBuff, _fMouseInterface, _fShoot, _fDye, _pType, _pOwner;
         static PropertyInfo _ignoreMouse, _assetValue, _texWidth, _filePath;
 
-        static Array _pets, _lights;
+        static Array _pets, _lights, _petDyes, _lightDyes;
+        static Dictionary<int, int> _dyeMap = new Dictionary<int, int>(); // pet projectile type -> dye shader id (only slots that have both a pet and a dye)
+        static long _dyeSignature = -1;
         static string _loadedFor, _lastSaved = "";
 
         // ------------------------------------------------------------------ entry points
@@ -53,9 +56,22 @@ namespace TerraCompanion.Hooks
                 SyncWithCharacter();
 
                 int size = SlotSize();
-                for (int k = 0; k < pets; k++) Slot(player, _pets, PetContext, k, baseX - (2 + k) * ColumnStep, baseY, size);
-                for (int k = 0; k < lights; k++) Slot(player, _lights, LightContext, k, baseX - (2 + k) * ColumnStep, baseY + ColumnStep, size);
+                // Right to left, like the vanilla row [dye][pet]: each extra pet is [dye][pet], placed after the vanilla dye slot.
+                // Keep clear of the inventory on the left of narrow screens.
+                int fit = Math.Max(0, (baseX - InventoryRightEdge) / (2 * ColumnStep));
+                pets = Math.Min(pets, fit); lights = Math.Min(lights, fit);
+                for (int k = 0; k < pets; k++)
+                {
+                    Slot(player, _pets, PetContext, k, baseX - (2 + 2 * k) * ColumnStep, baseY, size);
+                    Slot(player, _petDyes, DyeContext, k, baseX - (3 + 2 * k) * ColumnStep, baseY, size);
+                }
+                for (int k = 0; k < lights; k++)
+                {
+                    Slot(player, _lights, LightContext, k, baseX - (2 + 2 * k) * ColumnStep, baseY + ColumnStep, size);
+                    Slot(player, _lightDyes, DyeContext, k, baseX - (3 + 2 * k) * ColumnStep, baseY + ColumnStep, size);
+                }
                 SaveIfChanged();
+                RefreshDyeMap(pets, lights);
             }
             catch (Exception e) { Fail("draw", e); }
         }
@@ -71,8 +87,51 @@ namespace TerraCompanion.Hooks
                 // same rule as vanilla's UpdatePet: a slotted pet keeps its buff on (added again if it ran out)
                 Apply(player, _pets, pets);
                 Apply(player, _lights, lights);
+                RefreshDyeMap(pets, lights);
             }
             catch (Exception e) { Fail("update", e); }
+        }
+
+        /// <summary>
+        /// Called at the end of Main.GetProjectileDesiredShader (which picks the dye shader for each projectile).
+        /// If the projectile is the pet of one of our slots and that slot has a dye, the dye wins; otherwise the game's answer stands.
+        /// This runs for every projectile every frame, so the common case (no dyed extra pets) is a single check.
+        /// </summary>
+        public static int Shader(int vanilla, object projectile)
+        {
+            var map = _dyeMap;
+            if (map.Count == 0) return vanilla;
+            try
+            {
+                if ((int)_pOwner.GetValue(projectile) != (int)_myPlayer.GetValue(null)) return vanilla;
+                int shader;
+                return map.TryGetValue((int)_pType.GetValue(projectile), out shader) ? shader : vanilla;
+            }
+            catch { return vanilla; }
+        }
+
+        /// <summary>Rebuilds "pet projectile type -> shader" when the pets or dyes in the visible slots change.</summary>
+        static void RefreshDyeMap(int pets, int lights)
+        {
+            long sig = pets * 31 + lights;
+            for (int k = 0; k < pets; k++) sig = sig * 1000003 + (int)_fType.GetValue(_pets.GetValue(k)) * 8191 + (byte)_fDye.GetValue(_petDyes.GetValue(k));
+            for (int k = 0; k < lights; k++) sig = sig * 1000003 + (int)_fType.GetValue(_lights.GetValue(k)) * 8191 + (byte)_fDye.GetValue(_lightDyes.GetValue(k));
+            if (sig == _dyeSignature) return;
+            _dyeSignature = sig;
+            var map = new Dictionary<int, int>();
+            AddDyes(map, _pets, _petDyes, pets);
+            AddDyes(map, _lights, _lightDyes, lights);
+            _dyeMap = map;
+        }
+
+        static void AddDyes(Dictionary<int, int> map, Array pets, Array dyes, int count)
+        {
+            for (int k = 0; k < count; k++)
+            {
+                object pet = pets.GetValue(k), dye = dyes.GetValue(k);
+                int projectile = (int)_fShoot.GetValue(pet), shader = (byte)_fDye.GetValue(dye);
+                if ((int)_fType.GetValue(pet) > 0 && (int)_fType.GetValue(dye) > 0 && projectile > 0 && shader > 0) map[projectile] = shader;
+            }
         }
 
         // ------------------------------------------------------------------ slots
@@ -80,12 +139,17 @@ namespace TerraCompanion.Hooks
         static bool Active(out int pets, out int lights)
         {
             pets = lights = 0;
-            if (_dead) return false;
             var rules = GameHooks.CurrentRules;
-            if (rules == null || !rules.PetSlots) return false;
-            pets = Math.Min(MaxExtra, Math.Max(0, rules.MaxPets - 1));
-            lights = Math.Min(MaxExtra, Math.Max(0, rules.MaxLightPets - 1));
-            if (pets == 0 && lights == 0) return false;
+            if (!_dead && rules != null && rules.PetSlots)
+            {
+                pets = Math.Min(MaxExtra, Math.Max(0, rules.MaxPets - 1));
+                lights = Math.Min(MaxExtra, Math.Max(0, rules.MaxLightPets - 1));
+            }
+            if (_dead || pets + lights == 0)
+            {
+                if (_dyeMap.Count > 0) { _dyeMap = new Dictionary<int, int>(); _dyeSignature = -1; } // feature off: stop recolouring pets
+                return false;
+            }
             if (!_init) Init();
             return !_dead;
         }
@@ -141,7 +205,7 @@ namespace TerraCompanion.Hooks
         {
             string path = CharacterPath();
             if (path == null || path == _loadedFor) return;
-            for (int k = 0; k < MaxExtra; k++) { Clear(_pets, k); Clear(_lights, k); }
+            for (int k = 0; k < MaxExtra; k++) { Clear(_pets, k); Clear(_lights, k); Clear(_petDyes, k); Clear(_lightDyes, k); }
             string file = StoreFile(path);
             if (File.Exists(file))
                 foreach (string line in File.ReadAllLines(file))
@@ -151,7 +215,7 @@ namespace TerraCompanion.Hooks
                     if (p.Length != 4 || !int.TryParse(p[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out slot)
                         || !int.TryParse(p[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out type)
                         || !int.TryParse(p[3], NumberStyles.Integer, CultureInfo.InvariantCulture, out prefix)) continue;
-                    Array target = p[0] == "p" ? _pets : p[0] == "l" ? _lights : null;
+                    Array target = p[0] == "p" ? _pets : p[0] == "l" ? _lights : p[0] == "pd" ? _petDyes : p[0] == "ld" ? _lightDyes : null;
                     if (target == null || slot < 0 || slot >= MaxExtra || type <= 0) continue;
                     object item = target.GetValue(slot);
                     _setDefaults.Invoke(item, new object[] { type, null });
@@ -183,6 +247,8 @@ namespace TerraCompanion.Hooks
             var sb = new StringBuilder();
             Append(sb, "p", _pets);
             Append(sb, "l", _lights);
+            Append(sb, "pd", _petDyes);
+            Append(sb, "ld", _lightDyes);
             return sb.ToString();
         }
 
@@ -252,6 +318,9 @@ namespace TerraCompanion.Hooks
 
                 _fType = _itemT.GetField("type", I); _fStack = _itemT.GetField("stack", I); _fPrefix = _itemT.GetField("prefix", I);
                 _fBuff = _itemT.GetField("buffType", I); _fMouseInterface = player.GetField("mouseInterface", I);
+                _fShoot = _itemT.GetField("shoot", I); _fDye = _itemT.GetField("dye", I);
+                Type projectile = _game.GetType("Terraria.Projectile", true);
+                _pType = projectile.GetField("type", I); _pOwner = projectile.GetField("owner", I);
                 _setDefaults = FindInstance(_itemT, "SetDefaults", 2, typeof(int));
                 _prefix = _itemT.GetMethod("Prefix", I, null, new[] { typeof(int) }, null);
                 _findBuff = player.GetMethod("FindBuffIndex", I, null, new[] { typeof(int) }, null);
@@ -259,10 +328,10 @@ namespace TerraCompanion.Hooks
 
                 foreach (object member in new object[] { _draw, _handle, _mouseX, _mouseY, _scale, _spriteBatch, _armorHide, _myPlayer, _players, _vanityPet,
                     _lightPet, _activeFile, _filePath, _ignoreMouse, _invBack, _assetValue, _texWidth, _fType, _fStack, _fPrefix, _fBuff, _fMouseInterface,
-                    _setDefaults, _prefix, _findBuff, _addBuff })
+                    _setDefaults, _prefix, _findBuff, _addBuff, _fShoot, _fDye, _pType, _pOwner })
                     if (member == null) throw new InvalidOperationException("a game member this feature needs was not found (different game version?)");
 
-                _pets = NewItems(); _lights = NewItems();
+                _pets = NewItems(); _lights = NewItems(); _petDyes = NewItems(); _lightDyes = NewItems();
                 _init = true;
             }
             catch (Exception e)
