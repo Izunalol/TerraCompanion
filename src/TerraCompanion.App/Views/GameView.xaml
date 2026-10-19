@@ -27,7 +27,7 @@
       <Border Style="{StaticResource Card}" Margin="0,12,0,0">
         <StackPanel>
           <DockPanel>
-            <Ellipse x:Name="StatusDot" Width="12" Height="12" Fill="{StaticResource Muted}" Margin="0,0,10,0" VerticalAlignment="Center"/>
+            <Ellipse x:Name="StatusDot" Width="12" Height="12" Fill="{DynamicResource Muted}" Margin="0,0,10,0" VerticalAlignment="Center"/>
             <StackPanel>
               <TextBlock x:Name="StatusTitle" FontSize="16" FontWeight="SemiBold" Text="Checking..."/>
               <TextBlock x:Name="StatusDetail" Style="{StaticResource Hint}"/>

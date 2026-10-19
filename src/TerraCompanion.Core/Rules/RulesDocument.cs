@@ -40,6 +40,8 @@ public sealed class RulesDocument
     public double SpawnRate = 1, MaxSpawns = 1;
     /// <summary>Enchanted Sundial / Moondial cooldown in days; null = vanilla.</summary>
     public int? SundialDays, MoondialDays;
+    /// <summary>Extra minion slots (vanilla 0), and how many pets / light pets may be out at once (vanilla 1).</summary>
+    public int MinionBonus, MaxPets = 1, MaxLightPets = 1;
     public readonly SortedDictionary<string, string> Statics = new(StringComparer.Ordinal);
     public readonly List<FieldRule> Items = new();
     public readonly List<FieldRule> Npcs = new();
@@ -64,6 +66,13 @@ public sealed class RulesDocument
             if ((head == "spawnrate" || head == "maxspawns") && t.Length == 3 && t[1] == "=" && TryNum(t[2], out var mul))
             {
                 if (head == "spawnrate") d.SpawnRate = mul; else d.MaxSpawns = mul;
+            }
+            else if ((head == "minionbonus" || head == "maxpets" || head == "maxlightpets") && t.Length == 3 && t[1] == "="
+                     && int.TryParse(t[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out int count) && count >= 0)
+            {
+                if (head == "minionbonus") d.MinionBonus = count;
+                else if (head == "maxpets") d.MaxPets = Math.Max(1, count);
+                else d.MaxLightPets = Math.Max(1, count);
             }
             else if ((head == "sundialcooldown" || head == "moondialcooldown") && t.Length == 3 && t[1] == "="
                      && int.TryParse(t[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out int days) && days >= 0)
@@ -103,6 +112,9 @@ public sealed class RulesDocument
         sb.AppendLine("# --- world");
         sb.AppendLine($"spawnRate = {F(SpawnRate)}");
         sb.AppendLine($"maxSpawns = {F(MaxSpawns)}");
+        if (MinionBonus > 0) sb.AppendLine($"minionBonus = {MinionBonus}");
+        if (MaxPets > 1) sb.AppendLine($"maxPets = {MaxPets}");
+        if (MaxLightPets > 1) sb.AppendLine($"maxLightPets = {MaxLightPets}");
         if (SundialDays is int sun) sb.AppendLine($"sundialCooldown = {sun}");
         if (MoondialDays is int moon) sb.AppendLine($"moondialCooldown = {moon}");
         foreach (var (k, v) in Statics) sb.AppendLine($"static {k} = {v}");

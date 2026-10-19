@@ -76,13 +76,13 @@ public abstract class RuleEditorView : UserControl, IPage
     <Border DockPanel.Dock='Left' Width='28' Height='28' Margin='0,0,8,0'>
       <Image Source='{Binding Converter={x:Static views:EntityIconConverter.Instance}}' Stretch='Uniform' StretchDirection='DownOnly' RenderOptions.BitmapScalingMode='NearestNeighbor'/>
     </Border>
-    <TextBlock DockPanel.Dock='Right' Text='●' Foreground='#E8C35A' VerticalAlignment='Center' Margin='6,0,4,0' ToolTip='Has overrides'>
+    <TextBlock DockPanel.Dock='Right' Text='●' Foreground='{DynamicResource Gold}' VerticalAlignment='Center' Margin='6,0,4,0' ToolTip='Has overrides'>
       <TextBlock.Style><Style TargetType='TextBlock'><Setter Property='Visibility' Value='Collapsed'/>
         <Style.Triggers><DataTrigger Binding='{Binding Modified}' Value='True'><Setter Property='Visibility' Value='Visible'/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
     </TextBlock>
     <StackPanel VerticalAlignment='Center'>
-      <TextBlock Text='{Binding Name}' TextTrimming='CharacterEllipsis' Foreground='#E6E8EE'/>
-      <TextBlock Text='{Binding Sub}' FontSize='10' Foreground='#8D94A5'/>
+      <TextBlock Text='{Binding Name}' TextTrimming='CharacterEllipsis' Foreground='{DynamicResource Text}'/>
+      <TextBlock Text='{Binding Sub}' FontSize='10' Foreground='{DynamicResource Muted}'/>
     </StackPanel>
   </DockPanel>
 </DataTemplate>");
@@ -285,7 +285,7 @@ public abstract class RuleEditorView : UserControl, IPage
 
     static Border Warning(string text) => new()
     {
-        Background = new SolidColorBrush(Color.FromRgb(0x3A, 0x2E, 0x14)), CornerRadius = new CornerRadius(4), Padding = new Thickness(10, 6, 10, 6), Margin = new Thickness(0, 0, 0, 8),
+        Background = (Brush)Application.Current.FindResource("WarnBg"), CornerRadius = new CornerRadius(8), Padding = new Thickness(12, 8, 12, 8), Margin = new Thickness(0, 0, 0, 8),
         Child = new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap, Foreground = (Brush)Application.Current.FindResource("Warn") }
     };
 

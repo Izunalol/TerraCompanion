@@ -17,15 +17,10 @@ public sealed class ItemSlotControl : Border
     public bool AllowFavorite { get; }
 
     readonly Image _icon = new() { Stretch = Stretch.Uniform, StretchDirection = StretchDirection.DownOnly, Margin = new Thickness(4) };
-    readonly TextBlock _stack = new() { FontSize = 11, FontWeight = FontWeights.Bold, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 0, 3, 1) };
+    readonly TextBlock _stack = new() { FontSize = 11, FontWeight = FontWeights.Bold, Foreground = Brushes.White, Effect = new System.Windows.Media.Effects.DropShadowEffect { BlurRadius = 3, ShadowDepth = 0, Opacity = 1, Color = Colors.Black }, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 0, 3, 1) };
     readonly TextBlock _star = new() { Text = "★", FontSize = 10, Foreground = Brushes.Gold, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(3, 1, 0, 0) };
-    readonly TextBlock _hint = new() { FontSize = 9, Foreground = new SolidColorBrush(Color.FromRgb(0x5A, 0x60, 0x70)), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, TextAlignment = TextAlignment.Center, TextWrapping = TextWrapping.Wrap };
+    readonly TextBlock _hint = new() { FontSize = 9, Opacity = 0.8, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, TextAlignment = TextAlignment.Center, TextWrapping = TextWrapping.Wrap };
     bool _selected;
-
-    static readonly Brush Normal = new SolidColorBrush(Color.FromRgb(0x2A, 0x3A, 0x6B));
-    static readonly Brush NormalBorder = new SolidColorBrush(Color.FromRgb(0x3F, 0x55, 0x9A));
-    static readonly Brush Fav = new SolidColorBrush(Color.FromRgb(0x5A, 0x4A, 0x1E));
-    static readonly Brush SelectedBorder = new SolidColorBrush(Color.FromRgb(0xE8, 0xC3, 0x5A));
 
     public event Action<ItemSlotControl>? Picked;
     public event Action<ItemSlotControl>? Cleared;
@@ -35,8 +30,9 @@ public sealed class ItemSlotControl : Border
         Slot = slot; Kind = kind; Label = label; AllowFavorite = allowFavorite;
         Width = Height = 46;
         Margin = new Thickness(2);
-        CornerRadius = new CornerRadius(5);
-        BorderThickness = new Thickness(2);
+        CornerRadius = new CornerRadius(8);
+        BorderThickness = new Thickness(1.5);
+        _hint.SetResourceReference(TextBlock.ForegroundProperty, "Muted");
         Cursor = Cursors.Hand;
         _hint.Text = emptyHint;
         RenderOptions.SetBitmapScalingMode(_icon, BitmapScalingMode.NearestNeighbor);
@@ -65,8 +61,10 @@ public sealed class ItemSlotControl : Border
         _stack.Text = has && Slot.Stack > 1 ? Slot.Stack.ToString() : "";
         _star.Visibility = has && Slot.Favorited ? Visibility.Visible : Visibility.Collapsed;
         _hint.Visibility = has ? Visibility.Collapsed : Visibility.Visible;
-        Background = has && Slot.Favorited ? Fav : Normal;
-        BorderBrush = _selected ? SelectedBorder : NormalBorder;
+        // theme-aware (palette keys), so slots follow Light/Dark
+        SetResourceReference(BackgroundProperty, has && Slot.Favorited ? "SlotFav" : "Slot");
+        SetResourceReference(BorderBrushProperty, _selected ? "Accent" : "SlotBorder");
+        BorderThickness = new Thickness(_selected ? 2.5 : 1.5);
         string name = !has || g == null ? "" : (g.PrefixName(Slot.Prefix) is { Length: > 0 } p ? p + " " : "") + g.ItemName(Slot.Type);
         ToolTip = has ? $"{name}{(Slot.Stack > 1 ? $"  ×{Slot.Stack}" : "")}\n{Label}\nRight-click to clear" : $"{Label} (empty)";
     }

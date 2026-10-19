@@ -38,7 +38,7 @@ public partial class GameView : UserControl, IPage
             var version = AppState.Game != null ? $"Terraria {AppState.Game.Version} (release {AppState.Game.Release}). " : "";
             switch (s.State)
             {
-                case PatchState.Patched: SetStatus("Patched - rules are active", version + s.Detail, "Accent"); break;
+                case PatchState.Patched: SetStatus("Patched - rules are active", version + s.Detail, "Good"); break;
                 case PatchState.PatchedOutdated: SetStatus("Patch needs updating", version + s.Detail, "Warn"); break;
                 case PatchState.Vanilla: SetStatus("Not patched", version + "The game is vanilla. Patch it to enable your rules.", "Muted"); break;
                 default: SetStatus("Problem", s.Detail, "Bad"); break;

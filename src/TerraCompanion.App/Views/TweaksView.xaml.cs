@@ -76,6 +76,7 @@ public partial class TweaksView : UserControl, IPage
             rules.MaxSpawns, 0.1, 20, v => { AppState.Rules.MaxSpawns = v; AppState.RulesEdited(); }));
 
         BuildDisplay();
+        BuildSummons();
 
         CooldownPanel.Children.Clear();
         foreach (var (key, label, _) in Cooldowns) CooldownPanel.Children.Add(CooldownRow(key, label));
@@ -93,6 +94,50 @@ public partial class TweaksView : UserControl, IPage
         foreach (var p in ItemPresets) ItemPanel.Children.Add(PresetRow(p));
         NpcPanel.Children.Clear();
         foreach (var p in NpcPresets) NpcPanel.Children.Add(PresetRow(p));
+    }
+
+    void BuildSummons()
+    {
+        SummonPanel.Children.Clear();
+        SummonPanel.Children.Add(CountRow("Extra minion slots",
+            "Added to your base of 1; armor, accessories and buffs still add their own. 5 extra = a 6-minion base. Each minion still uses the slots it costs.",
+            0, 0, 200, () => AppState.Rules.MinionBonus, v => AppState.Rules.MinionBonus = v, "extra"));
+        SummonPanel.Children.Add(CountRow("Pets at once",
+            "Vanilla keeps one pet: summoning a new one removes the old. With a higher number, new pets are added next to the old ones; the oldest go once you pass the limit.",
+            1, 1, 40, () => AppState.Rules.MaxPets, v => AppState.Rules.MaxPets = v, "pets"));
+        SummonPanel.Children.Add(CountRow("Light pets at once",
+            "Same for light pets (Shadow Orb, Wisp, Fairy...). Their light adds up.",
+            1, 1, 40, () => AppState.Rules.MaxLightPets, v => AppState.Rules.MaxLightPets = v, "light pets"));
+        SummonPanel.Children.Add(new TextBlock
+        {
+            Style = (Style)FindResource("Hint"), Margin = new Thickness(0, 8, 0, 0),
+            Text = "Extra pets are summoned the normal way (use or equip the pet item, one after another). They are kept as buffs, so they stay with your character " +
+                   "between sessions, and you can also add them in the Character Editor under Buffs. The pet, light pet, minecart, mount and hook equipment slots themselves " +
+                   "stay as they are: the game's save format has exactly five, so adding more could corrupt characters. " +
+                   "Minion and pet changes only matter on the machine of the player who owns them."
+        });
+    }
+
+    /// <summary>A whole-number setting where <paramref name="vanilla"/> means "unchanged" (shown as the placeholder).</summary>
+    FrameworkElement CountRow(string label, string hint, int vanilla, int min, int max, Func<int> get, Action<int> set, string unit)
+    {
+        var grid = Row(label, hint + $" Vanilla: {vanilla}.");
+        var box = new TextBox { Width = 80, Text = get().ToString(CultureInfo.InvariantCulture) };
+        void Commit()
+        {
+            if (int.TryParse(box.Text.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int v)) set(Math.Clamp(v, min, max));
+            else set(vanilla);
+            box.Text = get().ToString(CultureInfo.InvariantCulture);
+            AppState.RulesEdited(this);
+        }
+        box.LostFocus += (_, _) => Commit();
+        box.KeyDown += (_, e) => { if (e.Key == System.Windows.Input.Key.Enter) Commit(); };
+        var panel = new StackPanel { Orientation = Orientation.Horizontal };
+        panel.Children.Add(box);
+        panel.Children.Add(new TextBlock { Text = unit, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 0, 0), Foreground = (System.Windows.Media.Brush)FindResource("Muted") });
+        Grid.SetColumn(panel, 1);
+        grid.Children.Add(panel);
+        return grid;
     }
 
     const string WideScreenKey = "Terraria.Main.SupportWideScreen";
@@ -302,6 +347,7 @@ public partial class TweaksView : UserControl, IPage
         foreach (var (key, _, _) in Cooldowns) r.Statics.Remove(key);
         r.SundialDays = r.MoondialDays = null;
         r.Statics.Remove(WideScreenKey);
+        r.MinionBonus = 0; r.MaxPets = r.MaxLightPets = 1;
         foreach (var p in ItemPresets) foreach (var x in p.Rules) r.Set(r.Items, x.sel, x.field, null);
         foreach (var p in NpcPresets) foreach (var x in p.Rules) r.Set(r.Npcs, x.sel, x.field, null);
         AppState.RulesEdited(this);

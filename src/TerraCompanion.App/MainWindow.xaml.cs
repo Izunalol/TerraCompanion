@@ -16,12 +16,19 @@ public partial class MainWindow : Window
 {
     public static MainWindow? Instance { get; private set; }
     readonly Dictionary<string, FrameworkElement> _pages = new();
+    bool _themeInit;
 
     public MainWindow()
     {
         Instance = this;
         InitializeComponent();
         AppState.Init();
+        SourceInitialized += (_, _) => ThemeManager.ApplyChrome(this);
+        _themeInit = true; // showing the saved choice must not re-save or re-apply it
+        foreach (ComboBoxItem i in ThemeBox.Items) if ((string)i.Tag == AppState.Settings.Theme) ThemeBox.SelectedItem = i;
+        if (ThemeBox.SelectedItem == null) ThemeBox.SelectedIndex = 0;
+        _themeInit = false;
+        ThemeManager.Changed += RebuildPages;
         AppState.GameChanged += () => GameVersionText.Text = AppState.Game != null
             ? $"Terraria {AppState.Game.Version}"
             : "Terraria not found - set the folder on the Game page";
@@ -42,7 +49,7 @@ public partial class MainWindow : Window
         {
             bool running = GameLocator.IsGameRunning();
             RunningText.Text = running ? "● Terraria is running" : "○ Terraria is not running";
-            RunningText.Foreground = (System.Windows.Media.Brush)FindResource(running ? "Accent" : "Muted");
+            RunningText.Foreground = (System.Windows.Media.Brush)FindResource(running ? "Good" : "Muted");
         }, Dispatcher);
         timer.Start();
     }
@@ -69,6 +76,24 @@ public partial class MainWindow : Window
         }
         Host.Content = page;
         (page as IPage)?.OnShown();
+    }
+
+    void ThemeBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_themeInit || ThemeBox.SelectedItem is not ComboBoxItem item) return;
+        var mode = (string)item.Tag;
+        if (mode == AppState.Settings.Theme && mode == ThemeManager.Mode) return;
+        AppState.Settings.Theme = mode;
+        AppState.Settings.Save();
+        ThemeManager.Apply(mode);
+    }
+
+    /// <summary>Pages that build part of their UI in code pick up the new palette by being recreated; an unsaved character page is kept.</summary>
+    void RebuildPages()
+    {
+        foreach (var key in _pages.Keys.ToList())
+            if (!(_pages[key] is PlayerView { HasUnsavedChanges: true })) _pages.Remove(key);
+        if (Nav.SelectedItem != null) Nav_SelectionChanged(Nav, null!);
     }
 
     public void Navigate(string key)

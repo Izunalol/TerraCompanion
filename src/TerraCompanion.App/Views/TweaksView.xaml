@@ -6,7 +6,7 @@
       <TextBlock Style="{StaticResource H1}" Text="World Rules"/>
       <TextBlock Style="{StaticResource Hint}" FontSize="13" Margin="0,0,0,6"
                  Text="Game-wide tweaks. Every change is saved to your rules file immediately and picked up by the patched game within a second (items in your inventory refresh too)."/>
-      <TextBlock x:Name="NotPatchedHint" Style="{StaticResource Hint}" Foreground="{StaticResource Warn}" Visibility="Collapsed" Margin="0,0,0,6"
+      <TextBlock x:Name="NotPatchedHint" Style="{StaticResource Hint}" Foreground="{DynamicResource Warn}" Visibility="Collapsed" Margin="0,0,0,6"
                  Text="The game is not patched yet - these rules do nothing until you patch it on the Game &amp; Patch page."/>
 
       <TextBlock Style="{StaticResource H2}" Text="Enemy spawning"/>
@@ -17,6 +17,11 @@
       <TextBlock Style="{StaticResource H2}" Text="Display"/>
       <Border Style="{StaticResource Card}">
         <StackPanel x:Name="DisplayPanel"/>
+      </Border>
+
+      <TextBlock Style="{StaticResource H2}" Text="Minions and pets"/>
+      <Border Style="{StaticResource Card}">
+        <StackPanel x:Name="SummonPanel"/>
       </Border>
 
       <TextBlock Style="{StaticResource H2}" Text="Cooldowns"/>

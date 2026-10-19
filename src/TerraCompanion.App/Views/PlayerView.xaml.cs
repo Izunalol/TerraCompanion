@@ -31,6 +31,8 @@ public partial class PlayerView : UserControl, IPage
 
     public PlayerView() => InitializeComponent();
 
+    public bool HasUnsavedChanges => _dirty;
+
     public void OnShown()
     {
         if (PlayerList.Items.Count == 0) _ = RefreshList();
@@ -548,9 +550,24 @@ public partial class PlayerView : UserControl, IPage
         }
 
         BuffsPanel.Children.Add(H2("Add a buff"));
-        var options = g == null ? new List<(int id, string name)>() :
-            Enumerable.Range(1, Math.Max(0, g.BuffCount - 1)).Select(i => (id: i, name: g.BuffName(i))).OrderBy(x => x.name).ToList();
-        var pick = new ComboBox { Width = 260, ItemsSource = options.Select(o => $"{o.name}  (#{o.id})").ToList() };
+        BuffsPanel.Children.Add(new TextBlock
+        {
+            Style = (Style)FindResource("Hint"), Margin = new Thickness(0, 0, 0, 6), FontSize = 12,
+            Text = "Pets and light pets stay with the character as buffs. Several can be active at once when the pet limits are raised on World Rules."
+        });
+        var kind = new ComboBox { Width = 130, ItemsSource = new[] { "All buffs", "Pets", "Light pets" }, SelectedIndex = 0, Margin = new Thickness(0, 0, 8, 0) };
+        var pick = new ComboBox { Width = 260 };
+        var shown = new List<(int id, string name)>();
+        void FillOptions()
+        {
+            IEnumerable<int> ids = g == null ? Enumerable.Empty<int>() : Enumerable.Range(1, Math.Max(0, g.BuffCount - 1));
+            if (g != null && kind.SelectedIndex == 1) ids = ids.Where(g.PetBuffs.Contains);
+            else if (g != null && kind.SelectedIndex == 2) ids = ids.Where(g.LightPetBuffs.Contains);
+            shown = ids.Select(i => (id: i, name: g!.BuffName(i))).OrderBy(x => x.name).ToList();
+            pick.ItemsSource = shown.Select(o => $"{o.name}  (#{o.id})").ToList();
+        }
+        kind.SelectionChanged += (_, _) => FillOptions();
+        FillOptions();
         var secs = new TextBox { Width = 90, Text = "600", Margin = new Thickness(8, 0, 0, 0) };
         var add = new Button { Content = "Add", Margin = new Thickness(8, 0, 0, 0) };
         add.Click += (_, _) =>
@@ -559,12 +576,12 @@ public partial class PlayerView : UserControl, IPage
             int slot = Array.FindIndex(p.BuffType, 0, p.BuffCount, t => t <= 0);
             if (slot < 0) { MessageBox.Show("All buff slots are full."); return; }
             double.TryParse(secs.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var s);
-            p.BuffType[slot] = options[pick.SelectedIndex].id;
+            p.BuffType[slot] = shown[pick.SelectedIndex].id;
             p.BuffTime[slot] = (int)Math.Max(60, s * 60);
             Changed(); BuildBuffs();
         };
         var addRow = new StackPanel { Orientation = Orientation.Horizontal };
-        addRow.Children.Add(pick); addRow.Children.Add(secs);
+        addRow.Children.Add(kind); addRow.Children.Add(pick); addRow.Children.Add(secs);
         addRow.Children.Add(new TextBlock { Text = "seconds", Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, Foreground = (Brush)FindResource("Muted") });
         addRow.Children.Add(add);
         BuffsPanel.Children.Add(addRow);

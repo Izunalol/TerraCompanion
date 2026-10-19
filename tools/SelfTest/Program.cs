@@ -63,6 +63,7 @@ switch (args[0])
         foreach (int id in new[] { 1, 757, 3063, 4956, 5000, 5738, g.ItemCount - 1 }) Console.WriteLine($"  item {id}: {g.ItemName(id)} ({g.ItemInternalNames[id]})");
         foreach (int id in new[] { -65, 1, 4, 50, 113, 398, g.NpcCount - 1 }) Console.WriteLine($"  npc {id}: {g.NpcName(id)}");
         Console.WriteLine($"  prefix 81: {g.PrefixName(81)}, 59: {g.PrefixName(59)}; buff 290: {g.BuffName(290)}, 86: {g.BuffName(86)}; tile 203: {g.TileName(203)}; wall 1: {g.WallName(1)}");
+        Console.WriteLine($"  pet buffs: {g.PetBuffs.Count} e.g. {string.Join(", ", g.PetBuffs.OrderBy(i => i).Take(6).Select(i => g.BuffName(i)))}; light pets: {g.LightPetBuffs.Count}: {string.Join(", ", g.LightPetBuffs.OrderBy(i => i).Select(i => $"{i}={g.BuffName(i)}"))}");
         var m = g.Map;
         Console.WriteLine($"  map colors: tiles {m.TilesFound}/{g.TileCount}, walls {m.WallsFound}/{g.WallCount}; dirt=#{m.Tile[0]:X8} stone=#{m.Tile[1]:X8} grass=#{m.Tile[2]:X8} wall1=#{m.Wall[1]:X8}");
         Console.WriteLine($"  liquids={string.Join(",", m.Liquid.Select(c => c.ToString("X8")))} sky={m.SkyTop:X8}->{m.SkyBottom:X8} dirt={m.DirtTop:X8}->{m.DirtBottom:X8} rock={m.RockTop:X8}->{m.RockBottom:X8} hell={m.Hell:X8}");
@@ -120,10 +121,10 @@ switch (args[0])
         if (!ok) failures++;
 
         // rules document: UI syntax and text round trip
-        var doc = TerraCompanion.Core.Rules.RulesDocument.Parse("spawnRate = 2\nstatic Terraria.Item.potionDelay = 1800\nitem 757 damage*=1.5\nitem weapon autoReuse = true\nnpc -3 lifeMax += -5\n# my note\nweird line kept\n");
+        var doc = TerraCompanion.Core.Rules.RulesDocument.Parse("minionBonus = 5\nmaxPets = 3\nmaxLightPets = 2\nspawnRate = 2\nstatic Terraria.Item.potionDelay = 1800\nitem 757 damage*=1.5\nitem weapon autoReuse = true\nnpc -3 lifeMax += -5\n# my note\nweird line kept\n");
         var text = doc.ToText();
         var again = TerraCompanion.Core.Rules.RulesDocument.Parse(text);
-        bool rok = again.SpawnRate == 2 && again.Items.Count == 2 && again.Npcs.Count == 1 && again.Npcs[0].Display == "+-5" && again.Other.Contains("weird line kept")
+        bool rok = again.MinionBonus == 5 && again.MaxPets == 3 && again.MaxLightPets == 2 && again.SpawnRate == 2 && again.Items.Count == 2 && again.Npcs.Count == 1 && again.Npcs[0].Display == "+-5" && again.Other.Contains("weird line kept")
                    && again.Statics["Terraria.Item.potionDelay"] == "1800" && again.ToText() == text;
         TerraCompanion.Core.Rules.FieldRule.TryParseDisplay("x0.5", false, out var op1, out var v1);
         TerraCompanion.Core.Rules.FieldRule.TryParseDisplay("+-10", false, out var op2, out var v2);

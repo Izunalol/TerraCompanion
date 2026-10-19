@@ -14,8 +14,10 @@ public partial class App : Application
     {
         DispatcherUnhandledException += OnUnhandled;
         base.OnStartup(e);
+        bool snapshot = e.Args.Length >= 2 && e.Args[0] == "--snapshot";
+        ThemeManager.Apply(snapshot && e.Args.Length == 3 ? e.Args[2] : AppState.Settings.Theme);
         var window = new MainWindow();
-        if (e.Args.Length == 2 && e.Args[0] == "--snapshot")
+        if (snapshot)
         {
             window.WindowStartupLocation = WindowStartupLocation.Manual;
             window.Left = -20000; window.Top = 0; window.ShowActivated = false;

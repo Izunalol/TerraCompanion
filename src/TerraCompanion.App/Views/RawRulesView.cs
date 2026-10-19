@@ -20,6 +20,9 @@ public sealed class RawRulesView : UserControl, IPage
     const string Help =
 @"spawnRate = 2                        enemy spawn-rate multiplier
 maxSpawns = 1.5                      max-enemies multiplier
+minionBonus = 5                      extra minion slots (vanilla 0)
+maxPets = 3                          pets out at once (vanilla 1)
+maxLightPets = 2                     light pets out at once (vanilla 1)
 sundialCooldown = 2                  Enchanted Sundial cooldown in days (vanilla 8)
 moondialCooldown = 0                 Enchanted Moondial cooldown in days (0 = every night)
 static Terraria.Item.potionDelay = 1800   any static field, by full type name

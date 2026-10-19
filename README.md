@@ -2,7 +2,7 @@
 
 A Windows companion app for **vanilla Terraria** (built and tested against 1.4.5.8). No tModLoader required. It covers:
 
-- **World Rules**: unlock the resolution / zoom cap (see below), enemy spawn rate and max enemies, potion-sickness timers, Enchanted Sundial and Moondial cooldowns, and group presets such as weapon damage ×, use speed ×, auto-swing everything, infinite ammo or consumables, and enemy/boss health and damage ×.
+- **World Rules**: unlock the resolution / zoom cap, extra minion slots and more pets / light pets at once (see below), enemy spawn rate and max enemies, potion-sickness timers, Enchanted Sundial and Moondial cooldowns, and group presets such as weapon damage ×, use speed ×, auto-swing everything, infinite ammo or consumables, and enemy/boss health and damage ×.
 - **Item Editor**: per-item overrides for damage, crit, knockback, use time and animation, cooldown, auto-swing, mana, projectile, max stack, "consumed on use", healing, buffs, tool power, defense, value and rarity. Real item icons are included.
 - **NPC Editor**: per-NPC life, damage, defense, knockback, coin drops, size and movement flags.
 - **World Viewer**: renders any `.wld` with the game's own minimap colors. It supports zoom and pan, depth and compass readout, block/wall/liquid info on hover, highlighting one block type (ores, crystals...), finding items across all chests, and exporting a PNG.
@@ -48,6 +48,9 @@ Patching always starts from the clean backup, so re-patching never stacks. A bro
 ```
 spawnRate = 2                              # 2x as many spawns
 maxSpawns = 1.5
+minionBonus = 5                            # extra minion slots (vanilla 0)
+maxPets = 3                                # pets at once (vanilla 1)
+maxLightPets = 2                           # light pets at once (vanilla 1)
 sundialCooldown = 2                        # Enchanted Sundial cooldown in days (vanilla 8)
 moondialCooldown = 0                       # Enchanted Moondial: usable every night
 static Terraria.Item.potionDelay = 1800    # any static field (ticks: 60 = 1 s)
@@ -62,6 +65,9 @@ npc boss lifeMax *= 2                      # selectors: id (negatives too), *, b
 Group rules run first, then id rules, so an id rule always wins. Fields are any public number or true/false field on `Terraria.Item` / `Terraria.NPC`.
 
 ## Notes and limits
+
+- **Minions and pets:** `minionBonus` raises the base minion count (vanilla 1) that armor and accessories add to. Vanilla removes your old pet whenever you get a new one; `maxPets` / `maxLightPets` let several stay out (the oldest go once you pass the limit). Extra pets are summoned the normal way and live on as buffs, so they persist with the character; the Character Editor can also add them under Buffs. The equipment slots themselves stay at five (pet, light pet, minecart, mount, hook) because the character file format fixes that number.
+- **Appearance:** the app follows the Windows light / dark setting by default (Apple-style Light and Dark palettes); change it with the Appearance menu in the sidebar.
 
 - **Resolution / zoom cap:** Terraria forces a minimum zoom of `max(1, width/1920, height/1200)`, so above 1080p the view is only magnified and you never see more world. The **Display** option on World Rules sets the game's own hidden `Main.SupportWideScreen` switch, removing that cap (render targets up to 4096 px). It also turns on the game's `Support4K` option in `config.json` (backup kept). Restart the game after changing it. Rain, falling stars and enemy-spawn areas still use the vanilla 1920x1200 region.
 

@@ -43,7 +43,7 @@
       </StackPanel>
     </ScrollViewer>
 
-    <Border Grid.Column="2" Background="#0C0D10" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="6" ClipToBounds="True">
+    <Border Grid.Column="2" Background="#0C0D10" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="10" ClipToBounds="True">
       <Grid>
         <Canvas x:Name="Viewport" Background="Transparent" ClipToBounds="True"
                 MouseWheel="Viewport_MouseWheel" MouseLeftButtonDown="Viewport_MouseDown" MouseLeftButtonUp="Viewport_MouseUp"
@@ -51,16 +51,16 @@
           <Image x:Name="MapImage" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
           <Canvas x:Name="Overlay" IsHitTestVisible="False"/>
         </Canvas>
-        <TextBlock x:Name="Placeholder" Text="No world loaded" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{StaticResource Muted}" FontSize="16"/>
+        <TextBlock x:Name="Placeholder" Text="No world loaded" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#8E8E93" FontSize="16"/>
         <Border x:Name="LoadingPanel" Background="#CC0C0D10" Visibility="Collapsed">
           <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="300">
-            <TextBlock x:Name="LoadingText" Text="Loading world..." HorizontalAlignment="Center" Margin="0,0,0,8"/>
-            <ProgressBar x:Name="LoadingBar" Height="6" Maximum="1" Foreground="{StaticResource Accent}" Background="{StaticResource Panel2}" BorderThickness="0"/>
+            <TextBlock x:Name="LoadingText" Foreground="#F2F2F7" Text="Loading world..." HorizontalAlignment="Center" Margin="0,0,0,8"/>
+            <ProgressBar x:Name="LoadingBar" Height="6" Maximum="1" Foreground="{DynamicResource Accent}" Background="#3A3A3C" BorderThickness="0"/>
           </StackPanel>
         </Border>
         <!-- hover readout -->
-        <Border x:Name="HoverPanel" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="10" Background="#E6111317" CornerRadius="4" Padding="10,6"
-                BorderBrush="{StaticResource Line}" BorderThickness="1" Visibility="Collapsed" IsHitTestVisible="False" MaxWidth="460">
+        <Border x:Name="HoverPanel" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="10" Background="{DynamicResource Overlay}" CornerRadius="8" Padding="12,8"
+                BorderBrush="{DynamicResource Line}" BorderThickness="1" Visibility="Collapsed" IsHitTestVisible="False" MaxWidth="460">
           <TextBlock x:Name="HoverText" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap"/>
         </Border>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8">
@@ -68,7 +68,7 @@
           <Button Content="Spawn" Click="GoSpawn_Click" Padding="10,4"/>
           <Button Content="Dungeon" Click="GoDungeon_Click" Padding="10,4" Margin="0"/>
         </StackPanel>
-        <TextBlock HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="10" Style="{StaticResource Hint}" IsHitTestVisible="False"
+        <TextBlock HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="10" Style="{StaticResource Hint}" Foreground="#8E8E93" IsHitTestVisible="False"
                    Text="Scroll to zoom · drag to pan · hover a chest to see its contents"/>
       </Grid>
     </Border>

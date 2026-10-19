@@ -108,6 +108,28 @@ public static class Patcher
             log.Add(n > 0 ? $"Hooked Main.{method} (custom cooldown)." : $"Main.{method} not found: {method} cooldown setting disabled.");
         }
 
+        // Minion slots: the base value (vanilla 1) is stored by Player.ResetEffects every frame; add our bonus there.
+        var player = mod.GetType("Terraria.Player");
+        var reset = player?.Methods.FirstOrDefault(x => x.Name == "ResetEffects" && !x.IsStatic && x.Parameters.Count == 0 && x.HasBody);
+        int minionStores = reset == null ? 0 : FilterStore(reset, "maxMinions", Hook("MinionBase"));
+        log.Add(minionStores == 1 ? "Hooked Player.ResetEffects (extra minion slots)." : "Player.ResetEffects not as expected: extra minion slots disabled.");
+        if (minionStores > 1) throw new InvalidOperationException("Unexpected number of maxMinions stores in ResetEffects.");
+
+        // Pets / light pets: vanilla deletes the old pet buff whenever a new one is added. Let the hook decide first.
+        var petRemoval = player?.Methods.FirstOrDefault(x => x.Name == "AddBuff_RemoveOldPetBuffsOfMatchingType" && !x.IsStatic && x.Parameters.Count == 1 && x.HasBody);
+        if (petRemoval != null)
+        {
+            var il = petRemoval.Body.GetILProcessor();
+            var first = petRemoval.Body.Instructions[0];
+            il.InsertBefore(first, il.Create(OpCodes.Ldarg_0));
+            il.InsertBefore(first, il.Create(OpCodes.Ldarg_1));
+            il.InsertBefore(first, il.Create(OpCodes.Call, Hook("HandlePetBuffs")));
+            il.InsertBefore(first, il.Create(OpCodes.Brfalse, first));
+            il.InsertBefore(first, il.Create(OpCodes.Ret));
+            log.Add("Hooked Player pet buff handling (pet / light pet limits).");
+        }
+        else log.Add("Pet buff handling not found: pet limits disabled.");
+
         // Marker type so we can recognise a patched exe.
         mod.Types.Add(new TypeDefinition("", MarkerAttribute, TypeAttributes.NotPublic | TypeAttributes.Sealed | TypeAttributes.Abstract, mod.TypeSystem.Object));
 
@@ -173,7 +195,8 @@ public static class Patcher
     static int FilterStore(MethodDefinition m, string field, MethodReference filter)
     {
         var il = m.Body.GetILProcessor();
-        var stores = m.Body.Instructions.Where(i => i.OpCode == OpCodes.Stsfld && i.Operand is FieldReference f && f.Name == field
+        // stsfld (static) or stfld (instance): in both cases the value to store is on top of the stack when we insert the call
+        var stores = m.Body.Instructions.Where(i => (i.OpCode == OpCodes.Stsfld || i.OpCode == OpCodes.Stfld) && i.Operand is FieldReference f && f.Name == field
                                                     && f.FieldType.MetadataType == MetadataType.Int32).ToList();
         foreach (var store in stores)
         {

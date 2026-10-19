@@ -3,11 +3,12 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="TerraCompanion" Width="1380" Height="880" MinWidth="980" MinHeight="620"
         Icon="/Assets/TerraCompanion.ico"
-        Background="{StaticResource Bg}" WindowStartupLocation="CenterScreen"
-        UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+        Background="{DynamicResource Bg}" Foreground="{DynamicResource Text}"
+        FontFamily="{StaticResource UiFont}" FontSize="13"
+        WindowStartupLocation="CenterScreen" UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
   <Grid>
     <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="210"/>
+      <ColumnDefinition Width="224"/>
       <ColumnDefinition/>
     </Grid.ColumnDefinitions>
     <Grid.RowDefinitions>
@@ -16,41 +17,51 @@
     </Grid.RowDefinitions>
 
     <!-- sidebar -->
-    <Border Grid.RowSpan="2" Background="#111317" BorderBrush="{StaticResource Line}" BorderThickness="0,0,1,0">
+    <Border Grid.RowSpan="2" Background="{DynamicResource Sidebar}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
       <DockPanel>
-        <DockPanel DockPanel.Dock="Top" Margin="14,16,14,20">
-          <Image DockPanel.Dock="Left" Source="/Assets/TreeIcon.png" Width="32" Height="32" Margin="0,0,8,0"
+        <DockPanel DockPanel.Dock="Top" Margin="16,18,14,18">
+          <Image DockPanel.Dock="Left" Source="/Assets/TreeIcon.png" Width="34" Height="34" Margin="0,0,10,0"
                  VerticalAlignment="Center" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
           <StackPanel VerticalAlignment="Center">
-            <TextBlock Text="TerraCompanion" FontSize="17" FontWeight="Bold" Foreground="{StaticResource Accent}"/>
+            <TextBlock Text="TerraCompanion" FontFamily="{StaticResource UiDisplayFont}" FontSize="16" FontWeight="SemiBold"/>
             <TextBlock x:Name="GameVersionText" Text="Looking for Terraria..." Style="{StaticResource Hint}" Margin="0,1,0,0"/>
           </StackPanel>
         </DockPanel>
-        <TextBlock DockPanel.Dock="Bottom" Margin="18,0,18,14" Style="{StaticResource Hint}" FontSize="11"
-                   Text="Not affiliated with Re-Logic. Back up your saves."/>
-        <ListBox x:Name="Nav" Background="Transparent" BorderThickness="0" Margin="8,0" SelectionChanged="Nav_SelectionChanged">
+
+        <StackPanel DockPanel.Dock="Bottom" Margin="14,0,14,14">
+          <TextBlock Text="Appearance" Style="{StaticResource Hint}" Margin="2,0,0,4"/>
+          <ComboBox x:Name="ThemeBox" SelectionChanged="ThemeBox_SelectionChanged">
+            <ComboBoxItem Tag="auto">Automatic</ComboBoxItem>
+            <ComboBoxItem Tag="light">Light</ComboBoxItem>
+            <ComboBoxItem Tag="dark">Dark</ComboBoxItem>
+          </ComboBox>
+          <TextBlock Margin="2,10,0,0" Style="{StaticResource Hint}" FontSize="11" Text="Not affiliated with Re-Logic. Back up your saves."/>
+        </StackPanel>
+
+        <ListBox x:Name="Nav" Background="Transparent" BorderThickness="0" Margin="8,0" Padding="0" SelectionChanged="Nav_SelectionChanged">
+          <ListBox.Template>
+            <ControlTemplate TargetType="ListBox">
+              <ScrollViewer Focusable="False" VerticalScrollBarVisibility="Auto"><ItemsPresenter/></ScrollViewer>
+            </ControlTemplate>
+          </ListBox.Template>
           <ListBox.ItemContainerStyle>
-            <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
-              <Setter Property="Padding" Value="12,9"/>
-              <Setter Property="Margin" Value="0,1"/>
-              <Setter Property="FontSize" Value="14"/>
-            </Style>
+            <Style TargetType="ListBoxItem" BasedOn="{StaticResource NavItem}"/>
           </ListBox.ItemContainerStyle>
-          <ListBoxItem Tag="game">⚙  Game &amp; Patch</ListBoxItem>
-          <ListBoxItem Tag="tweaks">🌍  World Rules</ListBoxItem>
-          <ListBoxItem Tag="items">🗡  Item Editor</ListBoxItem>
-          <ListBoxItem Tag="npcs">👾  NPC Editor</ListBoxItem>
-          <ListBoxItem Tag="world">🗺  World Viewer</ListBoxItem>
-          <ListBoxItem Tag="player">🎒  Character Editor</ListBoxItem>
-          <ListBoxItem Tag="raw">📝  Raw Rules</ListBoxItem>
+          <ListBoxItem Tag="game"><StackPanel Orientation="Horizontal"><TextBlock FontFamily="{StaticResource IconFont}" Text="&#xE713;" Width="26" FontSize="15" VerticalAlignment="Center"/><TextBlock Text="Game &amp; Patch" VerticalAlignment="Center"/></StackPanel></ListBoxItem>
+          <ListBoxItem Tag="tweaks"><StackPanel Orientation="Horizontal"><TextBlock FontFamily="{StaticResource IconFont}" Text="&#xE774;" Width="26" FontSize="15" VerticalAlignment="Center"/><TextBlock Text="World Rules" VerticalAlignment="Center"/></StackPanel></ListBoxItem>
+          <ListBoxItem Tag="items"><StackPanel Orientation="Horizontal"><TextBlock FontFamily="{StaticResource IconFont}" Text="&#xE70F;" Width="26" FontSize="15" VerticalAlignment="Center"/><TextBlock Text="Item Editor" VerticalAlignment="Center"/></StackPanel></ListBoxItem>
+          <ListBoxItem Tag="npcs"><StackPanel Orientation="Horizontal"><TextBlock FontFamily="{StaticResource IconFont}" Text="&#xE716;" Width="26" FontSize="15" VerticalAlignment="Center"/><TextBlock Text="NPC Editor" VerticalAlignment="Center"/></StackPanel></ListBoxItem>
+          <ListBoxItem Tag="world"><StackPanel Orientation="Horizontal"><TextBlock FontFamily="{StaticResource IconFont}" Text="&#xE707;" Width="26" FontSize="15" VerticalAlignment="Center"/><TextBlock Text="World Viewer" VerticalAlignment="Center"/></StackPanel></ListBoxItem>
+          <ListBoxItem Tag="player"><StackPanel Orientation="Horizontal"><TextBlock FontFamily="{StaticResource IconFont}" Text="&#xE77B;" Width="26" FontSize="15" VerticalAlignment="Center"/><TextBlock Text="Character Editor" VerticalAlignment="Center"/></StackPanel></ListBoxItem>
+          <ListBoxItem Tag="raw"><StackPanel Orientation="Horizontal"><TextBlock FontFamily="{StaticResource IconFont}" Text="&#xE8A5;" Width="26" FontSize="15" VerticalAlignment="Center"/><TextBlock Text="Raw Rules" VerticalAlignment="Center"/></StackPanel></ListBoxItem>
         </ListBox>
       </DockPanel>
     </Border>
 
-    <ContentControl x:Name="Host" Grid.Column="1" Margin="24,20,24,10"/>
+    <ContentControl x:Name="Host" Grid.Column="1" Margin="28,22,28,10"/>
 
     <!-- status bar -->
-    <Border Grid.Row="1" Grid.Column="1" Background="#111317" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Padding="16,5">
+    <Border Grid.Row="1" Grid.Column="1" Background="{DynamicResource Bg}" BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0" Padding="18,6">
       <DockPanel>
         <TextBlock x:Name="RunningText" DockPanel.Dock="Right" Style="{StaticResource Hint}"/>
         <TextBlock x:Name="StatusText" Style="{StaticResource Hint}" TextTrimming="CharacterEllipsis"/>

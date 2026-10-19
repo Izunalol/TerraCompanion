@@ -31,6 +31,8 @@ public sealed class GameData
     public Dictionary<int, int> ItemAnimationFrames = new();
     /// <summary>Vanilla values of a few static fields the World Rules page exposes, e.g. "Terraria.Item.potionDelay".</summary>
     public Dictionary<string, int> StaticDefaults = new();
+    /// <summary>Buff ids that are pets / light pets (read from Main.vanityPet / Main.lightPet).</summary>
+    public HashSet<int> PetBuffs = new(), LightPetBuffs = new();
     public MapColors Map = new();
 
     readonly ConcurrentDictionary<int, TextureData?> _icons = new();
@@ -96,6 +98,9 @@ public sealed class GameData
                 if (LoadedInt(src) is int days) g.StaticDefaults["Terraria.Main." + method] = days;
             }
         }
+
+        g.PetBuffs = ReadBuffFlags(main, "vanityPet");
+        g.LightPetBuffs = ReadBuffFlags(main, "lightPet");
 
         g.ItemAnimationFrames = ReadItemAnimations(main);
         g.Map = MapColorExtractor.Extract(mod, Math.Max(g.TileCount, 1), Math.Max(g.WallCount, 1));
@@ -176,6 +181,23 @@ public sealed class GameData
         if (c == Code.Ldc_I4_S) return (sbyte)i.Operand;
         if (c == Code.Ldc_I4) return (int)i.Operand;
         return null;
+    }
+
+    /// <summary>
+    /// Buff ids the game flags in a static bool array such as Main.vanityPet / Main.lightPet. The game sets them with
+    /// "ldsfld array; ldc id; ldc.i4.1; stelem.i1" inside its static setup methods.
+    /// </summary>
+    static HashSet<int> ReadBuffFlags(TypeDefinition? main, string arrayName)
+    {
+        var ids = new HashSet<int>();
+        foreach (var m in main?.Methods.Where(x => x.HasBody && (x.Name == "Initialize_TileAndNPCData1" || x.IsConstructor && x.IsStatic)) ?? Enumerable.Empty<MethodDefinition>())
+            foreach (var ins in m.Body.Instructions)
+            {
+                if (ins.OpCode != OpCodes.Ldsfld || ins.Operand is not FieldReference fr || fr.Name != arrayName) continue;
+                var id = ins.Next; var one = id?.Next; var store = one?.Next;
+                if (store?.OpCode == OpCodes.Stelem_I1 && LoadedInt(one) == 1 && LoadedInt(id) is int buff) ids.Add(buff);
+            }
+        return ids;
     }
 
     static Dictionary<int, int> ReadItemAnimations(TypeDefinition? main)

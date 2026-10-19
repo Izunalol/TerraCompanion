@@ -10,6 +10,8 @@ public sealed class Settings
 {
     public string? GameDir { get; set; }
     public string? SaveDir { get; set; }
+    /// <summary>"auto" (follow Windows), "light" or "dark".</summary>
+    public string Theme { get; set; } = "auto";
 
     static string FilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TerraCompanion", "settings.json");
 

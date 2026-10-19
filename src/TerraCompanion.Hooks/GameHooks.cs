@@ -18,7 +18,7 @@ namespace TerraCompanion.Hooks
     /// </summary>
     public static class GameHooks
     {
-        public const string Version = "3";
+        public const string Version = "4";
 
         // Terraria's true vanilla spawn settings. The multipliers in rules.txt are relative to these, NOT to whatever
         // the exe happens to contain (a hand-edited exe may already spawn several times faster).
@@ -72,6 +72,71 @@ namespace TerraCompanion.Hooks
                 if (ReloadIfChanged()) RefreshLocalPlayerItems();
             }
             catch (Exception e) { LogOnce("tick", "Tick failed: " + e); }
+        }
+
+        /// <summary>Player.ResetEffects stores the base minion count (vanilla 1) through this every frame.</summary>
+        public static int MinionBase(int vanilla)
+        {
+            var rules = _rules; // volatile read; null-safe because it is initialised to an empty rule set
+            return vanilla + rules.MinionBonus;
+        }
+
+        static FieldInfo _vanityPet, _lightPet, _buffTypeField;
+        static MethodInfo _delBuff;
+
+        /// <summary>
+        /// Replaces Player.AddBuff_RemoveOldPetBuffsOfMatchingType. Returns true when it handled the removal
+        /// (the patched method then returns immediately); false hands control back to vanilla.
+        /// Vanilla deletes every existing pet (or light pet) buff when a new one arrives. With a limit above 1
+        /// we only delete as many as needed to stay within the limit.
+        /// </summary>
+        public static bool HandlePetBuffs(object player, int type)
+        {
+            try
+            {
+                if (!_started) EnsureStarted();
+                var rules = _rules;
+                if (rules.MaxPets <= 1 && rules.MaxLightPets <= 1) return false; // nothing configured: pure vanilla behaviour
+                if (_vanityPet == null)
+                {
+                    var main = _game.GetType("Terraria.Main");
+                    var playerType = _game.GetType("Terraria.Player");
+                    _vanityPet = main.GetField("vanityPet", BindingFlags.Static | BindingFlags.Public);
+                    _lightPet = main.GetField("lightPet", BindingFlags.Static | BindingFlags.Public);
+                    _buffTypeField = playerType.GetField("buffType", BindingFlags.Instance | BindingFlags.Public);
+                    _delBuff = playerType.GetMethod("DelBuff", BindingFlags.Instance | BindingFlags.Public, null, new[] { typeof(int) }, null);
+                }
+                var light = (bool[])_lightPet.GetValue(null);
+                var pet = (bool[])_vanityPet.GetValue(null);
+                if (type < 0 || type >= light.Length || type >= pet.Length) return false;
+                var buffs = (int[])_buffTypeField.GetValue(player);
+                if (light[type]) TrimBuffs(player, buffs, type, light, rules.MaxLightPets);
+                if (pet[type]) TrimBuffs(player, buffs, type, pet, rules.MaxPets);
+                return true;
+            }
+            catch (Exception e)
+            {
+                LogOnce("pets", "Pet limit failed, using vanilla behaviour: " + e.Message);
+                return false;
+            }
+        }
+
+        static void TrimBuffs(object player, int[] buffs, int newType, bool[] category, int limit)
+        {
+            limit = Math.Max(1, limit);
+            // other pets of this kind that are already out (the same pet just gets its timer refreshed by AddBuff)
+            var others = new List<int>();
+            for (int i = 0; i < buffs.Length; i++)
+            {
+                int t = buffs[i];
+                if (t > 0 && t != newType && t < category.Length && category[t]) others.Add(i);
+            }
+            int excess = others.Count - (limit - 1);
+            if (excess <= 0) return;
+            // Drop the pets in the lowest buff slots (the game keeps no age, so slot order is the best proxy for "oldest").
+            // DelBuff shifts later buffs down, so delete the chosen slots from the highest index to the lowest.
+            foreach (int slot in others.Take(excess).OrderByDescending(s => s))
+                _delBuff.Invoke(player, new object[] { slot });
         }
 
         /// <summary>Main.Sundialing stores its cooldown (vanilla 8 days) through this.</summary>
@@ -271,7 +336,10 @@ namespace TerraCompanion.Hooks
             Log("Rules loaded: " + rules.ItemById.Count + " items, " + rules.ItemSelectors.Count + " item group rules, " + rules.NpcById.Count + " NPCs, "
                 + rules.NpcSelectors.Count + " NPC group rules, spawnRate x" + rules.SpawnRate + ", maxSpawns x" + rules.MaxSpawns + ", " + rules.Statics.Count + " statics"
                 + (rules.SundialDays >= 0 ? ", sundial " + rules.SundialDays + " days" : "")
-                + (rules.MoondialDays >= 0 ? ", moondial " + rules.MoondialDays + " days" : ""));
+                + (rules.MoondialDays >= 0 ? ", moondial " + rules.MoondialDays + " days" : "")
+                + (rules.MinionBonus > 0 ? ", +" + rules.MinionBonus + " minions" : "")
+                + (rules.MaxPets > 1 ? ", " + rules.MaxPets + " pets" : "")
+                + (rules.MaxLightPets > 1 ? ", " + rules.MaxLightPets + " light pets" : ""));
             return true;
         }
 

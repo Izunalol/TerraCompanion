@@ -20,7 +20,7 @@
           <DataTemplate>
             <StackPanel Margin="0,3">
               <TextBlock Text="{Binding Title}" FontWeight="SemiBold"/>
-              <TextBlock Text="{Binding Sub}" FontSize="11" Foreground="{StaticResource Muted}"/>
+              <TextBlock Text="{Binding Sub}" FontSize="11" Foreground="{DynamicResource Muted}"/>
             </StackPanel>
           </DataTemplate>
         </ListBox.ItemTemplate>
@@ -28,7 +28,7 @@
     </DockPanel>
 
     <Grid Grid.Column="2">
-      <TextBlock x:Name="EmptyText" Text="Pick a character on the left." Foreground="{StaticResource Muted}" FontSize="15"
+      <TextBlock x:Name="EmptyText" Text="Pick a character on the left." Foreground="{DynamicResource Muted}" FontSize="15"
                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
       <DockPanel x:Name="EditorRoot" Visibility="Collapsed">
         <!-- header -->
@@ -42,8 +42,8 @@
             <TextBlock x:Name="HeaderSub" Style="{StaticResource Hint}"/>
           </StackPanel>
         </DockPanel>
-        <Border x:Name="WarningBar" DockPanel.Dock="Top" Background="#3A2E14" CornerRadius="4" Padding="10,6" Margin="0,6,0,0" Visibility="Collapsed">
-          <TextBlock x:Name="WarningText" Foreground="{StaticResource Warn}" TextWrapping="Wrap"/>
+        <Border x:Name="WarningBar" DockPanel.Dock="Top" Background="{DynamicResource WarnBg}" CornerRadius="8" Padding="12,8" Margin="0,6,0,0" Visibility="Collapsed">
+          <TextBlock x:Name="WarningText" Foreground="{DynamicResource Warn}" TextWrapping="Wrap"/>
         </Border>
 
         <Grid>
@@ -63,9 +63,9 @@
           <Border x:Name="SlotEditor" Grid.Column="1" Visibility="Collapsed" Width="290" Margin="14,44,0,0" Style="{StaticResource Card}" VerticalAlignment="Stretch">
             <DockPanel>
               <StackPanel DockPanel.Dock="Top">
-                <TextBlock x:Name="SlotTitle" Text="Click a slot" FontWeight="SemiBold" Foreground="{StaticResource Gold}"/>
+                <TextBlock x:Name="SlotTitle" Text="Click a slot" FontWeight="SemiBold" Foreground="{DynamicResource Gold}"/>
                 <DockPanel Margin="0,8,0,0">
-                  <Border DockPanel.Dock="Left" Width="52" Height="52" Background="#2A3A6B" CornerRadius="5" Margin="0,0,10,0">
+                  <Border DockPanel.Dock="Left" Width="52" Height="52" Background="{DynamicResource Slot}" BorderBrush="{DynamicResource SlotBorder}" BorderThickness="1.5" CornerRadius="8" Margin="0,0,10,0">
                     <Image x:Name="SlotIcon" Stretch="Uniform" StretchDirection="DownOnly" Margin="4" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
                   </Border>
                   <TextBlock x:Name="SlotItemName" VerticalAlignment="Center" TextWrapping="Wrap" FontSize="14"/>
@@ -86,7 +86,7 @@
                 <TextBlock Text="Change item" FontWeight="SemiBold" Margin="0,14,0,6"/>
                 <Grid>
                   <TextBox x:Name="ItemSearch" TextChanged="ItemSearch_TextChanged"/>
-                  <TextBlock x:Name="ItemSearchHint" Text="Search all items by name or ID..." IsHitTestVisible="False" Margin="8,5,0,0" Foreground="{StaticResource Muted}"/>
+                  <TextBlock x:Name="ItemSearchHint" Text="Search all items by name or ID..." IsHitTestVisible="False" Margin="8,5,0,0" Foreground="{DynamicResource Muted}"/>
                 </Grid>
               </StackPanel>
               <ListBox x:Name="ItemResults" Margin="0,6,0,0" SelectionChanged="ItemResults_SelectionChanged" MinHeight="120">
@@ -94,7 +94,7 @@
                   <DataTemplate>
                     <DockPanel Height="26">
                       <Image DockPanel.Dock="Left" Width="24" Height="24" Margin="0,0,8,0" Source="{Binding Icon}" Stretch="Uniform" StretchDirection="DownOnly" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
-                      <TextBlock DockPanel.Dock="Right" Text="{Binding Id}" Foreground="{StaticResource Muted}" FontSize="10" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                      <TextBlock DockPanel.Dock="Right" Text="{Binding Id}" Foreground="{DynamicResource Muted}" FontSize="10" VerticalAlignment="Center" Margin="6,0,0,0"/>
                       <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                     </DockPanel>
                   </DataTemplate>

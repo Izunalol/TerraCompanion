@@ -20,6 +20,10 @@ namespace TerraCompanion.Hooks
         public double SpawnRate = 1, MaxSpawns = 1;
         /// <summary>Days of Enchanted Sundial / Moondial cooldown; -1 = vanilla.</summary>
         public int SundialDays = -1, MoondialDays = -1;
+        /// <summary>Extra minion slots on top of vanilla's base of 1 (accessories and armor still add theirs).</summary>
+        public int MinionBonus;
+        /// <summary>How many pets / light pets may be out at once (vanilla 1 each).</summary>
+        public int MaxPets = 1, MaxLightPets = 1;
         public readonly List<StaticRule> Statics = new List<StaticRule>();
         public readonly List<FieldRule> ItemSelectors = new List<FieldRule>();
         public readonly Dictionary<int, List<FieldRule>> ItemById = new Dictionary<int, List<FieldRule>>();
@@ -55,6 +59,21 @@ namespace TerraCompanion.Hooks
                 double v = double.Parse(t[2], CultureInfo.InvariantCulture);
                 if (v <= 0 || v > 1000) throw new Exception("multiplier must be between 0 and 1000");
                 if (head == "spawnrate") SpawnRate = v; else MaxSpawns = v;
+                return;
+            }
+            if ((head == "minionbonus" || head == "maxpets" || head == "maxlightpets") && t.Length == 3 && t[1] == "=")
+            {
+                int n = int.Parse(t[2], CultureInfo.InvariantCulture);
+                if (head == "minionbonus")
+                {
+                    if (n < 0 || n > 200) throw new Exception("minionBonus must be between 0 and 200");
+                    MinionBonus = n;
+                }
+                else
+                {
+                    if (n < 1 || n > 40) throw new Exception(head + " must be between 1 and 40");
+                    if (head == "maxpets") MaxPets = n; else MaxLightPets = n;
+                }
                 return;
             }
             if ((head == "sundialcooldown" || head == "moondialcooldown") && t.Length == 3 && t[1] == "=")
