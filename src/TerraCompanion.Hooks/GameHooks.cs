@@ -18,7 +18,7 @@ namespace TerraCompanion.Hooks
     /// </summary>
     public static class GameHooks
     {
-        public const string Version = "7";
+        public const string Version = "8";
 
         // Terraria's true vanilla spawn settings. The multipliers in rules.txt are relative to these, NOT to whatever
         // the exe happens to contain (a hand-edited exe may already spawn several times faster).

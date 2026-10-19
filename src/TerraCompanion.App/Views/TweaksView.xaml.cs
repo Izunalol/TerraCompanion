@@ -127,7 +127,7 @@ public partial class TweaksView : UserControl, IPage
                 : "Off: extra pets are still allowed, but only through the normal pet slot, using pet items, or the Character Editor's Buffs tab."
         });
         SummonPanel.Children.Add(CountRow("Extra accessory slots",
-            "Adds this many accessory slots, each with its own vanity slot and dye slot, on the Accessories tab of the inventory. They sit in extra columns to the left of the normal ones and work like them: stats, effects, wings, looks and dyes. The same accessory can't be worn twice, as in vanilla.",
+            "Adds this many accessory slots, each with its own vanity slot and dye slot, on the Accessories tab of the inventory. They sit in extra columns to the left of the normal ones and work like them: stats, effects, wings, looks and dyes. Each has the eye toggle to hide its look. The same accessory can't be worn twice, as in vanilla.",
             0, 0, 14, () => AppState.Rules.ExtraAccessories, v => AppState.Rules.ExtraAccessories = v, "extra"));
         SummonPanel.Children.Add(new TextBlock
         {

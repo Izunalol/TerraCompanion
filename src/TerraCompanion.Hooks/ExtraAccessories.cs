@@ -50,6 +50,13 @@ namespace TerraCompanion.Hooks
         static PropertyInfo _ignoreMouse, _assetValue, _texWidth, _filePath;
         static Type _vec2T, _colorT;
 
+        // The little eye on each functional slot: hides that accessory's look (effects stay), like the vanilla toggle.
+        static bool[] _hidden = new bool[MaxExtra];
+        static bool _tickOk;
+        static FieldInfo _tickOn, _tickOff, _mouseLeft, _mouseLeftRelease, _mouseItem, _pVelocity, _langInter;
+        static MethodInfo _clearHover, _playSound, _spriteBatchDraw;
+        static PropertyInfo _texHeight, _textValue;
+
         static Array[] _acc;   // [array] -> Item[20]: functional at 3..7, vanity at 13..17
         static Array[] _dyes;  // [array] -> Item[10]: dye at 3..7 (shared by that row's functional and vanity item)
         static string _loadedFor, _lastSaved = "";
@@ -78,7 +85,9 @@ namespace TerraCompanion.Hooks
                     int y = baseY + (int)(row * 56 * scale) + (row > 2 ? 4 : 0);
                     int fx = x0 - (3 + 3 * column) * ColumnStep - GapFromVanilla;
                     int a = k / PerArray, j = k % PerArray;
-                    Slot(player, _acc[a], AccessoryContext, 3 + j, fx, y, size, k, false);
+                    bool onEye = OverToggle(k, fx + 34, y - 2); // like vanilla, the eye wins over the slot beneath it
+                    Slot(player, _acc[a], AccessoryContext, 3 + j, fx, y, size, k, false, onEye);
+                    Toggle(k, fx + 34, y - 2);
                     Slot(player, _acc[a], VanityContext, 13 + j, fx - ColumnStep, y, size, k, true);
                     Slot(player, _dyes[a], DyeContext, 3 + j, fx - 2 * ColumnStep, y, size, k, false);
                 }
@@ -97,11 +106,12 @@ namespace TerraCompanion.Hooks
                 SyncWithCharacter();
                 bool[] hide = (bool[])_pHide.GetValue(player);
                 bool saved = hide[3];
-                hide[3] = false; // extra accessories are always "visible": ApplyEquipFunctional only uses this flag
                 try
                 {
-                    foreach (object item in Functionals(player, count))
+                    foreach (int k in Functionals(player, count))
                     {
+                        object item = Get(_acc, k, 3);
+                        hide[3] = _hidden[k]; // ApplyEquipFunctional only uses this flag, just as for a vanilla slot
                         _grantPrefix.Invoke(player, new object[] { item });
                         _grantArmor.Invoke(player, new object[] { item });
                         _applyFunctional.Invoke(player, new object[] { 3, item });
@@ -165,12 +175,14 @@ namespace TerraCompanion.Hooks
             {
                 int count;
                 if (!Active(out count) || !IsLocal(player)) return;
-                foreach (object item in Functionals(player, count))
+                foreach (int k in Functionals(player, count))
                 {
+                    object item = Get(_acc, k, 3);
                     if ((bool)_visuallyIncompatible.Invoke(player, new object[] { item })) continue;
                     int wing = (sbyte)_fWingSlot.GetValue(item);
-                    if (wing > 0) _pWings.SetValue(player, wing);
-                    _visible.Invoke(player, new object[] { 3, item });
+                    // like vanilla, hidden wings still show while airborne
+                    if (wing > 0 && (!_hidden[k] || Airborne(player))) _pWings.SetValue(player, wing);
+                    if (!_hidden[k]) _visible.Invoke(player, new object[] { 3, item });
                 }
             }
             catch (Exception e) { Fail("visuals", e); }
@@ -193,7 +205,7 @@ namespace TerraCompanion.Hooks
         // ------------------------------------------------------------------ which items count
 
         /// <summary>Functional extras that currently apply: accessories that pass the expert gate and are compatible with the rest.</summary>
-        static IEnumerable<object> Functionals(object player, int count)
+        static IEnumerable<int> Functionals(object player, int count)
         {
             var applied = new List<object>();
             for (int k = 0; k < count; k++)
@@ -203,7 +215,7 @@ namespace TerraCompanion.Hooks
                 if ((bool)_fExpertOnly.GetValue(item) && !ExpertMode()) continue;
                 if (!CompatibleWith(item, VanillaFunctional(player), false) || !CompatibleWith(item, applied, false)) continue;
                 applied.Add(item);
-                yield return item;
+                yield return k;
             }
         }
 
@@ -261,10 +273,68 @@ namespace TerraCompanion.Hooks
 
         // ------------------------------------------------------------------ slots
 
-        static void Slot(object player, Array items, int context, int slot, int x, int y, int size, int k, bool isVanity)
+        static bool Airborne(object player)
+        {
+            try { object v = _pVelocity.GetValue(player); return (float)v.GetType().GetField("Y").GetValue(v) != 0f; }
+            catch (Exception) { return false; }
+        }
+
+        /// <summary>The vanilla-style eye: a click flips whether this accessory's look is drawn. Not part of the core feature: if anything is missing it is simply not shown.</summary>
+        static void Toggle(int k, int x, int y)
+        {
+            if (!_tickOk || IsAir(Get(_acc, k, 3))) return;
+            try
+            {
+                object tex = _assetValue.GetValue((_hidden[k] ? _tickOff : _tickOn).GetValue(null), null);
+                int w = (int)_texWidth.GetValue(tex, null), h = (int)_texHeight.GetValue(tex, null);
+                int mx = (int)_mouseX.GetValue(null), my = (int)_mouseY.GetValue(null);
+                bool free = IsAir(_mouseItem.GetValue(null));
+                bool hover = free && !(bool)_ignoreMouse.GetValue(null, null) && mx >= x && mx < x + w && my >= y && my < y + h;
+                if (hover)
+                {
+                    _fMouseInterface.SetValue(LocalPlayer(), true);
+                    if ((bool)_mouseLeft.GetValue(null) && (bool)_mouseLeftRelease.GetValue(null))
+                    {
+                        _hidden[k] = !_hidden[k];
+                        tex = _assetValue.GetValue((_hidden[k] ? _tickOff : _tickOn).GetValue(null), null);
+                        try { _playSound.Invoke(null, new object[] { 12, -1, -1, 1, 1f, 0f }); } catch (Exception) { }
+                    }
+                }
+                if (free)
+                {
+                    object white = _colorT.GetProperty("White", BindingFlags.Static | BindingFlags.Public).GetValue(null, null);
+                    object dim = _colorT.GetMethod("op_Multiply", BindingFlags.Static | BindingFlags.Public, null, new[] { _colorT, typeof(float) }, null)
+                        .Invoke(null, new object[] { white, 0.7f });
+                    var position = Activator.CreateInstance(_vec2T, new object[] { (float)x, (float)y });
+                    _spriteBatchDraw.Invoke(_spriteBatch.GetValue(null), new object[] { tex, position, dim });
+                    if (hover)
+                    {
+                        _clearHover.Invoke(null, null);
+                        object text = ((Array)_langInter.GetValue(null)).GetValue(58 + (_hidden[k] ? 2 : 1));
+                        _hoverName.SetValue(null, (string)_textValue.GetValue(text, null));
+                    }
+                }
+            }
+            catch (Exception e) { _tickOk = false; GameHooks.WriteLog("Extra accessory visibility toggles switched off: " + e.GetType().Name + ": " + e.Message); }
+        }
+
+        static bool OverToggle(int k, int x, int y)
+        {
+            if (!_tickOk || IsAir(Get(_acc, k, 3)) || !IsAir(_mouseItem.GetValue(null))) return false;
+            try
+            {
+                object tex = _assetValue.GetValue((_hidden[k] ? _tickOff : _tickOn).GetValue(null), null);
+                int w = (int)_texWidth.GetValue(tex, null), h = (int)_texHeight.GetValue(tex, null);
+                int mx = (int)_mouseX.GetValue(null), my = (int)_mouseY.GetValue(null);
+                return mx >= x && mx < x + w && my >= y && my < y + h;
+            }
+            catch (Exception) { return false; }
+        }
+
+        static void Slot(object player, Array items, int context, int slot, int x, int y, int size, int k, bool isVanity, bool skipHandle = false)
         {
             int mx = (int)_mouseX.GetValue(null), my = (int)_mouseY.GetValue(null);
-            bool hover = mx >= x && mx < x + size && my >= y && my < y + size;
+            bool hover = mx >= x && mx < x + size && my >= y && my < y + size && !skipHandle;
             if (hover && !(bool)_ignoreMouse.GetValue(null, null))
             {
                 _fMouseInterface.SetValue(player, true);
@@ -320,6 +390,7 @@ namespace TerraCompanion.Hooks
         {
             string path = CharacterPath();
             if (path == null || path == _loadedFor) return;
+            _hidden = new bool[MaxExtra];
             for (int a = 0; a < _acc.Length; a++)
                 for (int j = 0; j < PerArray; j++) { Clear(_acc[a].GetValue(3 + j)); Clear(_acc[a].GetValue(13 + j)); Clear(_dyes[a].GetValue(3 + j)); }
             string file = StoreFile(path);
@@ -331,7 +402,9 @@ namespace TerraCompanion.Hooks
                     if (p.Length != 4 || !int.TryParse(p[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out k)
                         || !int.TryParse(p[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out type)
                         || !int.TryParse(p[3], NumberStyles.Integer, CultureInfo.InvariantCulture, out prefix)) continue;
-                    if (k < 0 || k >= MaxExtra || type <= 0) continue;
+                    if (k < 0 || k >= MaxExtra) continue;
+                    if (p[0] == "h") { _hidden[k] = type == 1; continue; }
+                    if (type <= 0) continue;
                     object item = p[0] == "a" ? Get(_acc, k, 3) : p[0] == "v" ? Get(_acc, k, 13) : p[0] == "d" ? Get(_dyes, k, 3) : null;
                     if (item == null) continue;
                     _setDefaults.Invoke(item, new object[] { type, null });
@@ -366,6 +439,7 @@ namespace TerraCompanion.Hooks
                 Line(sb, "a", k, Get(_acc, k, 3));
                 Line(sb, "v", k, Get(_acc, k, 13));
                 Line(sb, "d", k, Get(_dyes, k, 3));
+                if (_hidden[k]) sb.Append("h ").Append(k).Append(" 1 0\n");
             }
             return sb.ToString();
         }
@@ -446,6 +520,29 @@ namespace TerraCompanion.Hooks
                     _fWingSlot, _fMouseInterface, _pArmor, _pHide, _pWings, _pWho, _setDefaults, _prefix, _grantPrefix, _grantArmor, _applyFunctional,
                     _applyVanity, _updateDye, _visible, _visuallyIncompatible })
                     if (member == null) throw new InvalidOperationException("a game member this feature needs was not found (different game version?)");
+
+                try
+                {
+                    Type tex = _game.GetType("Terraria.GameContent.TextureAssets", true), batch = _spriteBatch.FieldType;
+                    _tickOn = tex.GetField("InventoryTickOn", S); _tickOff = tex.GetField("InventoryTickOff", S);
+                    _mouseLeft = main.GetField("mouseLeft", S); _mouseLeftRelease = main.GetField("mouseLeftRelease", S); _mouseItem = main.GetField("mouseItem", S);
+                    _pVelocity = player.GetField("velocity", I); _clearHover = main.GetMethod("ClearHoverItem", S);
+                    _langInter = _game.GetType("Terraria.Lang", true).GetField("inter", S);
+                    _textValue = _langInter.FieldType.GetElementType().GetProperty("Value", I);
+                    _texHeight = _assetValue.PropertyType.GetProperty("Height", I);
+                    Type sound = _game.GetType("Terraria.Audio.SoundEngine", true);
+                    foreach (MethodInfo m in sound.GetMethods(S))
+                        if (m.Name == "PlaySound" && m.GetParameters().Length == 6 && m.GetParameters()[0].ParameterType == typeof(int)) _playSound = m;
+                    foreach (MethodInfo m in batch.GetMethods(I))
+                    {
+                        ParameterInfo[] q = m.GetParameters();
+                        if (m.Name == "Draw" && q.Length == 3 && q[0].ParameterType == _assetValue.PropertyType && q[1].ParameterType == _vec2T && q[2].ParameterType == _colorT) _spriteBatchDraw = m;
+                    }
+                    _tickOk = _tickOn != null && _tickOff != null && _mouseLeft != null && _mouseLeftRelease != null && _mouseItem != null && _pVelocity != null
+                              && _clearHover != null && _langInter != null && _textValue != null && _texHeight != null && _playSound != null && _spriteBatchDraw != null;
+                }
+                catch (Exception) { _tickOk = false; }
+                if (!_tickOk) GameHooks.WriteLog("Extra accessory visibility toggles unavailable (different game version?); the slots themselves still work.");
 
                 int arrays = (MaxExtra + PerArray - 1) / PerArray;
                 _acc = new Array[arrays]; _dyes = new Array[arrays];
