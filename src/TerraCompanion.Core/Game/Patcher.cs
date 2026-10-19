@@ -130,6 +130,16 @@ public static class Patcher
         }
         else log.Add("Pet buff handling not found: pet limits disabled.");
 
+        // Extra pet / light pet equipment slots: (1) draw + handle them on the Equipment page, (2) apply their buffs each frame.
+        var drawInventory = mod.GetType("Terraria.Main")?.Methods.FirstOrDefault(x => x.Name == "DrawInventory" && x.HasBody);
+        log.Add(drawInventory != null && PatchEquipmentPage(drawInventory, Hook("DrawExtraSlots"))
+            ? "Hooked Main.DrawInventory (extra pet slots on the Equipment page)."
+            : "Equipment page layout not recognised: extra pet slots disabled.");
+        var playerUpdate = player?.Methods.FirstOrDefault(x => x.Name == "Update" && !x.IsStatic && x.Parameters.Count == 1 && x.HasBody);
+        log.Add(playerUpdate != null && PatchPetUpdate(playerUpdate, Hook("UpdateExtraPets"))
+            ? "Hooked Player.Update (extra pet slots apply their pets)."
+            : "Player.Update pet step not recognised: extra pet slots disabled.");
+
         // Marker type so we can recognise a patched exe.
         mod.Types.Add(new TypeDefinition("", MarkerAttribute, TypeAttributes.NotPublic | TypeAttributes.Sealed | TypeAttributes.Abstract, mod.TypeSystem.Object));
 
@@ -211,6 +221,74 @@ public static class Patcher
             }
         }
         return stores.Count;
+    }
+
+    /// <summary>
+    /// The Equipment page draws its slot grid in a loop and then moves on with
+    ///   y += 247; x += 8;
+    /// (to lay out the toggles below it). We insert a call right before that, passing the grid's origin
+    /// (the same x / y locals the loop used), so the hook can draw extra slots to the left of the pet rows.
+    /// Matched by shape, and only patched when it is found exactly once.
+    /// </summary>
+    static bool PatchEquipmentPage(MethodDefinition m, MethodReference hook)
+    {
+        var body = m.Body;
+        body.SimplifyMacros();
+        var matches = new List<(Instruction anchor, VariableDefinition x, VariableDefinition y)>();
+        foreach (var i in body.Instructions)
+        {
+            // ldloc Y ; ldc.i4 247 ; add ; stloc Y ; ldloc X ; ldc.i4.8 ; add ; stloc X
+            if (i.OpCode != OpCodes.Ldc_I4 || i.Operand is not int v || v != 247) continue;
+            var load = i.Previous; var add = i.Next; var store = add?.Next;
+            var loadX = store?.Next; var eight = loadX?.Next; var add2 = eight?.Next; var storeX = add2?.Next;
+            if (load?.OpCode != OpCodes.Ldloc || add?.OpCode != OpCodes.Add || store?.OpCode != OpCodes.Stloc) continue;
+            // (SimplifyMacros has turned ldc.i4.8 into a plain "ldc.i4 8")
+            if (loadX?.OpCode != OpCodes.Ldloc || eight?.OpCode != OpCodes.Ldc_I4 || eight.Operand is not int e8 || e8 != 8
+                || add2?.OpCode != OpCodes.Add || storeX?.OpCode != OpCodes.Stloc) continue;
+            if (load.Operand != store.Operand || loadX.Operand != storeX.Operand) continue;
+            matches.Add((load, (VariableDefinition)loadX.Operand, (VariableDefinition)load.Operand));
+        }
+        if (matches.Count != 1) { body.OptimizeMacros(); return false; }
+
+        var (anchor, xVar, yVar) = matches[0];
+        var il = body.GetILProcessor();
+        var first = il.Create(OpCodes.Ldloc, xVar);
+        il.InsertBefore(anchor, first);
+        il.InsertBefore(anchor, il.Create(OpCodes.Ldloc, yVar));
+        il.InsertBefore(anchor, il.Create(OpCodes.Call, hook));
+        RetargetBranches(body, anchor, first);
+        body.OptimizeMacros();
+        return true;
+    }
+
+    /// <summary>Player.Update calls UpdatePet(i) then UpdatePetLight(i). Right after the latter we call hook(this, i).</summary>
+    static bool PatchPetUpdate(MethodDefinition m, MethodReference hook)
+    {
+        var call = m.Body.Instructions.Where(i => i.OpCode == OpCodes.Call && i.Operand is MethodReference r && r.Name == "UpdatePetLight").ToList();
+        if (call.Count != 1) return false;
+        var il = m.Body.GetILProcessor();
+        var a = il.Create(OpCodes.Ldarg_0); var b = il.Create(OpCodes.Ldarg_1); var c = il.Create(OpCodes.Call, hook);
+        il.InsertAfter(call[0], a); il.InsertAfter(a, b); il.InsertAfter(b, c);
+        return true;
+    }
+
+    /// <summary>Points every branch that targeted <paramref name="from"/> at <paramref name="to"/> instead (code inserted before an anchor).</summary>
+    static void RetargetBranches(MethodBody body, Instruction from, Instruction to)
+    {
+        foreach (var i in body.Instructions)
+        {
+            if (i.Operand == from && i != to) i.Operand = to;
+            if (i.Operand is Instruction[] targets)
+                for (int k = 0; k < targets.Length; k++) if (targets[k] == from) targets[k] = to;
+        }
+        foreach (var h in body.ExceptionHandlers)
+        {
+            if (h.TryStart == from) h.TryStart = to;
+            if (h.TryEnd == from) h.TryEnd = to;
+            if (h.HandlerStart == from) h.HandlerStart = to;
+            if (h.HandlerEnd == from) h.HandlerEnd = to;
+            if (h.FilterStart == from) h.FilterStart = to;
+        }
     }
 
     static bool FilesEqual(string a, string b)

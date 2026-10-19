@@ -18,7 +18,7 @@ namespace TerraCompanion.Hooks
     /// </summary>
     public static class GameHooks
     {
-        public const string Version = "4";
+        public const string Version = "5";
 
         // Terraria's true vanilla spawn settings. The multipliers in rules.txt are relative to these, NOT to whatever
         // the exe happens to contain (a hand-edited exe may already spawn several times faster).
@@ -73,6 +73,17 @@ namespace TerraCompanion.Hooks
             }
             catch (Exception e) { LogOnce("tick", "Tick failed: " + e); }
         }
+
+        internal static Assembly GameAssembly { get { return _game; } }
+        internal static RuleSet CurrentRules { get { return _rules; } }
+        internal static string DataDir { get { return _dir; } }
+        internal static void WriteLog(string message) { Log(message); }
+
+        /// <summary>Called from Main.DrawInventory (Equipment page): draws and handles the extra pet slots.</summary>
+        public static void DrawExtraSlots(int baseX, int baseY) { ExtraSlots.Draw(baseX, baseY); }
+
+        /// <summary>Called from Player.Update right after the vanilla pet / light pet update.</summary>
+        public static void UpdateExtraPets(object player, int index) { ExtraSlots.Update(player, index); }
 
         /// <summary>Player.ResetEffects stores the base minion count (vanilla 1) through this every frame.</summary>
         public static int MinionBase(int vanilla)

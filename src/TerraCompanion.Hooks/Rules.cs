@@ -24,6 +24,8 @@ namespace TerraCompanion.Hooks
         public int MinionBonus;
         /// <summary>How many pets / light pets may be out at once (vanilla 1 each).</summary>
         public int MaxPets = 1, MaxLightPets = 1;
+        /// <summary>Show extra equipment slots (Equipment tab) for the extra pets / light pets. On by default; "petSlots = 0" turns it off.</summary>
+        public bool PetSlots = true;
         public readonly List<StaticRule> Statics = new List<StaticRule>();
         public readonly List<FieldRule> ItemSelectors = new List<FieldRule>();
         public readonly Dictionary<int, List<FieldRule>> ItemById = new Dictionary<int, List<FieldRule>>();
@@ -59,6 +61,11 @@ namespace TerraCompanion.Hooks
                 double v = double.Parse(t[2], CultureInfo.InvariantCulture);
                 if (v <= 0 || v > 1000) throw new Exception("multiplier must be between 0 and 1000");
                 if (head == "spawnrate") SpawnRate = v; else MaxSpawns = v;
+                return;
+            }
+            if (head == "petslots" && t.Length == 3 && t[1] == "=")
+            {
+                PetSlots = !(t[2] == "0" || t[2].ToLowerInvariant() == "false" || t[2].ToLowerInvariant() == "off");
                 return;
             }
             if ((head == "minionbonus" || head == "maxpets" || head == "maxlightpets") && t.Length == 3 && t[1] == "=")

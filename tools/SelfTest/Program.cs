@@ -121,10 +121,10 @@ switch (args[0])
         if (!ok) failures++;
 
         // rules document: UI syntax and text round trip
-        var doc = TerraCompanion.Core.Rules.RulesDocument.Parse("minionBonus = 5\nmaxPets = 3\nmaxLightPets = 2\nspawnRate = 2\nstatic Terraria.Item.potionDelay = 1800\nitem 757 damage*=1.5\nitem weapon autoReuse = true\nnpc -3 lifeMax += -5\n# my note\nweird line kept\n");
+        var doc = TerraCompanion.Core.Rules.RulesDocument.Parse("petSlots = 0\nminionBonus = 5\nmaxPets = 3\nmaxLightPets = 2\nspawnRate = 2\nstatic Terraria.Item.potionDelay = 1800\nitem 757 damage*=1.5\nitem weapon autoReuse = true\nnpc -3 lifeMax += -5\n# my note\nweird line kept\n");
         var text = doc.ToText();
         var again = TerraCompanion.Core.Rules.RulesDocument.Parse(text);
-        bool rok = again.MinionBonus == 5 && again.MaxPets == 3 && again.MaxLightPets == 2 && again.SpawnRate == 2 && again.Items.Count == 2 && again.Npcs.Count == 1 && again.Npcs[0].Display == "+-5" && again.Other.Contains("weird line kept")
+        bool rok = !again.PetSlots && again.MinionBonus == 5 && again.MaxPets == 3 && again.MaxLightPets == 2 && again.SpawnRate == 2 && again.Items.Count == 2 && again.Npcs.Count == 1 && again.Npcs[0].Display == "+-5" && again.Other.Contains("weird line kept")
                    && again.Statics["Terraria.Item.potionDelay"] == "1800" && again.ToText() == text;
         TerraCompanion.Core.Rules.FieldRule.TryParseDisplay("x0.5", false, out var op1, out var v1);
         TerraCompanion.Core.Rules.FieldRule.TryParseDisplay("+-10", false, out var op2, out var v2);

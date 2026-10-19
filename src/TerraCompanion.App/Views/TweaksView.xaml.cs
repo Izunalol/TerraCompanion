@@ -108,12 +108,29 @@ public partial class TweaksView : UserControl, IPage
         SummonPanel.Children.Add(CountRow("Light pets at once",
             "Same for light pets (Shadow Orb, Wisp, Fairy...). Their light adds up.",
             1, 1, 40, () => AppState.Rules.MaxLightPets, v => AppState.Rules.MaxLightPets = v, "light pets"));
+        int extraPets = Math.Min(4, AppState.Rules.MaxPets - 1), extraLights = Math.Min(4, AppState.Rules.MaxLightPets - 1);
+        var slots = new CheckBox
+        {
+            IsChecked = AppState.Rules.PetSlots, Margin = new Thickness(0, 10, 0, 2),
+            Content = new TextBlock { Text = "Show extra equipment slots for the extra pets", FontWeight = FontWeights.SemiBold }
+        };
+        slots.Click += (_, _) => { AppState.Rules.PetSlots = slots.IsChecked == true; AppState.RulesEdited(this); BuildSummons(); };
+        SummonPanel.Children.Add(slots);
         SummonPanel.Children.Add(new TextBlock
         {
-            Style = (Style)FindResource("Hint"), Margin = new Thickness(0, 8, 0, 0),
-            Text = "Extra pets are summoned the normal way (use or equip the pet item, one after another). They are kept as buffs, so they stay with your character " +
-                   "between sessions, and you can also add them in the Character Editor under Buffs. The pet, light pet, minecart, mount and hook equipment slots themselves " +
-                   "stay as they are: the game's save format has exactly five, so adding more could corrupt characters. " +
+            Style = (Style)FindResource("Hint"), Margin = new Thickness(26, 0, 0, 4),
+            Text = AppState.Rules.PetSlots
+                ? (extraPets + extraLights > 0
+                    ? $"The Equipment tab (the paper-doll tab) gets {extraPets} extra pet slot(s) and {extraLights} extra light pet slot(s), drawn to the left of the pet and light pet rows. "
+                    : "Raise Pets at once or Light pets at once to get extra slots on the Equipment tab (one extra slot per extra pet, up to 4). ") +
+                  "Put a pet item in a slot and the pet is summoned, just like the normal slots."
+                : "Off: extra pets are still allowed, but only through the normal pet slot, using pet items, or the Character Editor's Buffs tab."
+        });
+        SummonPanel.Children.Add(new TextBlock
+        {
+            Style = (Style)FindResource("Hint"), Margin = new Thickness(26, 0, 0, 0),
+            Text = "The extra slots are kept per character in the TerraCompanion folder (not inside the character file, so the file stays compatible with every Terraria). " +
+                   "They have no dye slot, and other players can't see the slots (they do see your pets). Restart Terraria after changing these settings. " +
                    "Minion and pet changes only matter on the machine of the player who owns them."
         });
     }
@@ -347,7 +364,7 @@ public partial class TweaksView : UserControl, IPage
         foreach (var (key, _, _) in Cooldowns) r.Statics.Remove(key);
         r.SundialDays = r.MoondialDays = null;
         r.Statics.Remove(WideScreenKey);
-        r.MinionBonus = 0; r.MaxPets = r.MaxLightPets = 1;
+        r.MinionBonus = 0; r.MaxPets = r.MaxLightPets = 1; r.PetSlots = true;
         foreach (var p in ItemPresets) foreach (var x in p.Rules) r.Set(r.Items, x.sel, x.field, null);
         foreach (var p in NpcPresets) foreach (var x in p.Rules) r.Set(r.Npcs, x.sel, x.field, null);
         AppState.RulesEdited(this);

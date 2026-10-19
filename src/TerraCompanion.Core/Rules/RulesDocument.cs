@@ -42,6 +42,8 @@ public sealed class RulesDocument
     public int? SundialDays, MoondialDays;
     /// <summary>Extra minion slots (vanilla 0), and how many pets / light pets may be out at once (vanilla 1).</summary>
     public int MinionBonus, MaxPets = 1, MaxLightPets = 1;
+    /// <summary>Extra equipment slots for the extra pets / light pets (on unless turned off).</summary>
+    public bool PetSlots = true;
     public readonly SortedDictionary<string, string> Statics = new(StringComparer.Ordinal);
     public readonly List<FieldRule> Items = new();
     public readonly List<FieldRule> Npcs = new();
@@ -67,6 +69,7 @@ public sealed class RulesDocument
             {
                 if (head == "spawnrate") d.SpawnRate = mul; else d.MaxSpawns = mul;
             }
+            else if (head == "petslots" && t.Length == 3 && t[1] == "=") d.PetSlots = !(t[2] == "0" || t[2].Equals("false", StringComparison.OrdinalIgnoreCase) || t[2].Equals("off", StringComparison.OrdinalIgnoreCase));
             else if ((head == "minionbonus" || head == "maxpets" || head == "maxlightpets") && t.Length == 3 && t[1] == "="
                      && int.TryParse(t[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out int count) && count >= 0)
             {
@@ -115,6 +118,7 @@ public sealed class RulesDocument
         if (MinionBonus > 0) sb.AppendLine($"minionBonus = {MinionBonus}");
         if (MaxPets > 1) sb.AppendLine($"maxPets = {MaxPets}");
         if (MaxLightPets > 1) sb.AppendLine($"maxLightPets = {MaxLightPets}");
+        if (!PetSlots) sb.AppendLine("petSlots = 0");
         if (SundialDays is int sun) sb.AppendLine($"sundialCooldown = {sun}");
         if (MoondialDays is int moon) sb.AppendLine($"moondialCooldown = {moon}");
         foreach (var (k, v) in Statics) sb.AppendLine($"static {k} = {v}");

@@ -27,6 +27,12 @@ static class Snapshot
             if (page == "player") { Select(content, "PlayerList", 0); await Settle(800); }
             await Settle(800);
             Save(w, Path.Combine(dir, page + ".png"));
+            if (page == "tweaks" && FindAll<ScrollViewer>(content).FirstOrDefault() is { } sv)
+            {
+                sv.ScrollToVerticalOffset(620);
+                await Settle(500);
+                Save(w, Path.Combine(dir, "tweaks_scrolled.png"));
+            }
             if (page == "player")
                 foreach (var (tab, name) in new[] { (1, "player_inventory"), (2, "player_equipment") })
                 {
