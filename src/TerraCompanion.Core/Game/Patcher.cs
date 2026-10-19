@@ -159,6 +159,24 @@ public static class Patcher
         }
         else log.Add("Projectile shader selection not recognised: dyes for the extra pet slots disabled.");
 
+        // Extra accessory slots (with vanity + dye): seven insertions that only make sense together, so find every anchor
+        // first and apply them all, or none.
+        var accessoryPatches = new List<Action?>
+        {
+            drawInventory == null ? null : FindAccessoryPage(drawInventory, Hook("DrawExtraAccessories")),
+            playerUpdateEquips(player) is { } ue ? FindAfterLoop(ue, "ApplyEquipFunctional", Hook("ExtraAccFunctional")) : null,
+            playerUpdateEquips(player) is { } ue2 ? FindAfterLoop(ue2, "ApplyEquipVanity", Hook("ExtraAccVanity")) : null,
+            player?.Methods.FirstOrDefault(x => x.Name == "UpdateDyes" && x.HasBody) is { } dyes ? FindDyes(dyes, Hook("ExtraAccDyesFunctional"), Hook("ExtraAccDyesVanity")) : null,
+            player?.Methods.FirstOrDefault(x => x.Name == "PlayerFrame" && x.HasBody) is { } frame ? FindPlayerFrame(frame, Hook("ExtraAccVisualsFunctional"), Hook("ExtraAccVisualsVanity")) : null,
+        };
+        if (accessoryPatches.All(p => p != null))
+        {
+            foreach (var apply in accessoryPatches) apply!();
+            log.Add("Hooked the accessory page, UpdateEquips, UpdateDyes and PlayerFrame (extra accessory slots with vanity and dyes).");
+        }
+        else log.Add("Accessory code not recognised (different game version?): extra accessory slots disabled. Missing: "
+            + string.Join(", ", new[] { "page", "UpdateEquips(functional)", "UpdateEquips(vanity)", "UpdateDyes", "PlayerFrame" }.Where((_, i) => accessoryPatches[i] == null)));
+
         // Marker type so we can recognise a patched exe.
         mod.Types.Add(new TypeDefinition("", MarkerAttribute, TypeAttributes.NotPublic | TypeAttributes.Sealed | TypeAttributes.Abstract, mod.TypeSystem.Object));
 
@@ -278,6 +296,113 @@ public static class Patcher
         RetargetBranches(body, anchor, first);
         body.OptimizeMacros();
         return true;
+    }
+
+    static MethodDefinition? playerUpdateEquips(TypeDefinition? player) =>
+        player?.Methods.FirstOrDefault(x => x.Name == "UpdateEquips" && !x.IsStatic && x.Parameters.Count == 1 && x.HasBody);
+
+    /// <summary>
+    /// The accessory page draws its slots in one loop (the only loop in DrawInventory that touches Player.armor,
+    /// ItemSlot.Draw and IsItemSlotUnlockedAndUsable together). Right after that loop ends we call hook(baseY), where baseY is
+    /// the page's top: the local the loop multiplies the row index by 56 with. Code placed there only runs when the loop falls
+    /// through, i.e. only on this page.
+    /// </summary>
+    static Action? FindAccessoryPage(MethodDefinition m, MethodReference hook)
+    {
+        var body = m.Body;
+        body.SimplifyMacros();
+        var list = body.Instructions.ToList();
+        var found = new List<(Instruction after, VariableDefinition baseY)>();
+        for (int bi = 0; bi < list.Count; bi++)
+        {
+            var blt = list[bi];
+            if (blt.OpCode != OpCodes.Blt || blt.Operand is not Instruction target) continue;
+            int start = list.IndexOf(target);
+            if (start < 0 || start >= bi) continue; // only backward branches (loops)
+            var range = list.Skip(start).Take(bi - start + 1).ToList();
+            bool Touches(string field) => range.Any(i => i.OpCode == OpCodes.Ldfld && i.Operand is FieldReference f && f.Name == field && f.DeclaringType.Name == "Player");
+            if (!Touches("armor") && !Touches("dye")) continue;
+            if (!range.Any(i => i.Operand is MethodReference r && r.Name == "IsItemSlotUnlockedAndUsable")) continue;
+            if (!range.Any(i => i.Operand is MethodReference r && r.DeclaringType.Name == "ItemSlot" && r.Name == "Draw")) continue;
+            // ldloc <baseY> ; conv.r4 ; ldloc <row> ; ldc.i4 56 ; mul
+            VariableDefinition? baseY = null;
+            for (int k = 0; k + 4 < range.Count && baseY == null; k++)
+                if (range[k].OpCode == OpCodes.Ldloc && range[k + 1].OpCode == OpCodes.Conv_R4 && range[k + 2].OpCode == OpCodes.Ldloc
+                    && range[k + 3].OpCode == OpCodes.Ldc_I4 && range[k + 3].Operand is int row && row == 56 && range[k + 4].OpCode == OpCodes.Mul)
+                    baseY = range[k].Operand as VariableDefinition;
+            if (baseY != null) found.Add((blt, baseY));
+        }
+        // Three loops draw the page (functional slots, vanity slots, dyes); the extras go after the last one.
+        if (found.Count != 3) { body.OptimizeMacros(); return null; }
+        var (after, y) = found[2];
+        return () =>
+        {
+            var il = body.GetILProcessor();
+            var load = il.Create(OpCodes.Ldloc, y);
+            il.InsertAfter(after, load);
+            il.InsertAfter(load, il.Create(OpCodes.Call, hook));
+            body.OptimizeMacros();
+        };
+    }
+
+    /// <summary>Finds the loop that calls <paramref name="callName"/> and returns an insertion of hook(this) just after that loop ends.</summary>
+    static Action? FindAfterLoop(MethodDefinition m, string callName, MethodReference hook)
+    {
+        var calls = m.Body.Instructions.Where(i => i.OpCode == OpCodes.Call && i.Operand is MethodReference r && r.Name == callName).ToList();
+        if (calls.Count != 1) return null;
+        Instruction? blt = calls[0];
+        while (blt != null && blt.OpCode != OpCodes.Blt && blt.OpCode != OpCodes.Blt_S) blt = blt.Next;
+        if (blt == null) return null;
+        return () =>
+        {
+            var il = m.Body.GetILProcessor();
+            var load = il.Create(OpCodes.Ldarg_0);
+            il.InsertAfter(blt, load);
+            il.InsertAfter(load, il.Create(OpCodes.Call, hook));
+        };
+    }
+
+    /// <summary>
+    /// UpdateDyes ends: ...cGrapple = miscDyes[4].dye; for (0..19) UpdateItemDye(...); cYorai = cPet.
+    /// Extra functional dyes go right after the cGrapple store (before the loop), extra vanity dyes right before the cYorai assignment (after it).
+    /// </summary>
+    static Action? FindDyes(MethodDefinition m, MethodReference before, MethodReference after)
+    {
+        var ins = m.Body.Instructions;
+        var grapple = ins.LastOrDefault(i => i.OpCode == OpCodes.Stfld && i.Operand is FieldReference f && f.Name == "cGrapple");
+        var yorai = ins.LastOrDefault(i => i.OpCode == OpCodes.Stfld && i.Operand is FieldReference f && f.Name == "cYorai");
+        // ldarg.0 ; ldarg.0 ; ldfld cPet ; stfld cYorai
+        var start = yorai?.Previous?.Previous?.Previous;
+        if (grapple == null || yorai == null || start?.OpCode != OpCodes.Ldarg_0 || yorai.Previous?.OpCode != OpCodes.Ldfld) return null;
+        if (!ins.Any(i => i.OpCode == OpCodes.Call && i.Operand is MethodReference r && r.Name == "UpdateItemDye")) return null;
+        return () =>
+        {
+            var il = m.Body.GetILProcessor();
+            var a = il.Create(OpCodes.Ldarg_0);
+            il.InsertAfter(grapple, a);
+            il.InsertAfter(a, il.Create(OpCodes.Call, before));
+            il.InsertBefore(start, il.Create(OpCodes.Ldarg_0));
+            il.InsertBefore(start, il.Create(OpCodes.Call, after));
+        };
+    }
+
+    /// <summary>PlayerFrame: "if (!dead) UpdateVisibleAccessories();". Extra functional visuals go before the call, extra vanity visuals after it.</summary>
+    static Action? FindPlayerFrame(MethodDefinition m, MethodReference before, MethodReference after)
+    {
+        var calls = m.Body.Instructions.Where(i => i.OpCode == OpCodes.Call && i.Operand is MethodReference r && r.Name == "UpdateVisibleAccessories").ToList();
+        if (calls.Count != 1 || calls[0].Previous?.OpCode != OpCodes.Ldarg_0) return null;
+        var call = calls[0]; var receiver = call.Previous!;
+        return () =>
+        {
+            var il = m.Body.GetILProcessor();
+            var first = il.Create(OpCodes.Ldarg_0);
+            il.InsertBefore(receiver, first);
+            il.InsertBefore(receiver, il.Create(OpCodes.Call, before));
+            RetargetBranches(m.Body, receiver, first); // branches that reach the original call must run the extra-visuals hook too
+            var load = il.Create(OpCodes.Ldarg_0);
+            il.InsertAfter(call, load);
+            il.InsertAfter(load, il.Create(OpCodes.Call, after));
+        };
     }
 
     /// <summary>Player.Update calls UpdatePet(i) then UpdatePetLight(i). Right after the latter we call hook(this, i).</summary>

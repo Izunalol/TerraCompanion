@@ -126,6 +126,9 @@ public partial class TweaksView : UserControl, IPage
                   "Put a pet item in a slot and the pet is summoned; put a dye next to it and that pet is recoloured, just like the normal slots."
                 : "Off: extra pets are still allowed, but only through the normal pet slot, using pet items, or the Character Editor's Buffs tab."
         });
+        SummonPanel.Children.Add(CountRow("Extra accessory slots",
+            "Adds this many accessory slots, each with its own vanity slot and dye slot, on the Accessories tab of the inventory. They sit in extra columns to the left of the normal ones and work like them: stats, effects, wings, looks and dyes. The same accessory can't be worn twice, as in vanilla.",
+            0, 0, 14, () => AppState.Rules.ExtraAccessories, v => AppState.Rules.ExtraAccessories = v, "extra"));
         SummonPanel.Children.Add(new TextBlock
         {
             Style = (Style)FindResource("Hint"), Margin = new Thickness(26, 0, 0, 0),
@@ -364,7 +367,7 @@ public partial class TweaksView : UserControl, IPage
         foreach (var (key, _, _) in Cooldowns) r.Statics.Remove(key);
         r.SundialDays = r.MoondialDays = null;
         r.Statics.Remove(WideScreenKey);
-        r.MinionBonus = 0; r.MaxPets = r.MaxLightPets = 1; r.PetSlots = true;
+        r.MinionBonus = 0; r.MaxPets = r.MaxLightPets = 1; r.PetSlots = true; r.ExtraAccessories = 0;
         foreach (var p in ItemPresets) foreach (var x in p.Rules) r.Set(r.Items, x.sel, x.field, null);
         foreach (var p in NpcPresets) foreach (var x in p.Rules) r.Set(r.Npcs, x.sel, x.field, null);
         AppState.RulesEdited(this);

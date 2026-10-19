@@ -52,6 +52,7 @@ minionBonus = 5                            # extra minion slots (vanilla 0)
 maxPets = 3                                # pets at once (vanilla 1)
 maxLightPets = 2                           # light pets at once (vanilla 1)
 petSlots = 0                               # hide the extra pet equipment slots (default: shown)
+extraAccessories = 4                         # extra accessory slots (0-14), each with its own vanity and dye slot
 sundialCooldown = 2                        # Enchanted Sundial cooldown in days (vanilla 8)
 moondialCooldown = 0                       # Enchanted Moondial: usable every night
 static Terraria.Item.potionDelay = 1800    # any static field (ticks: 60 = 1 s)
@@ -67,6 +68,7 @@ Group rules run first, then id rules, so an id rule always wins. Fields are any 
 
 ## Notes and limits
 
+- **Extra accessory slots:** `extraAccessories = N` (0-14, or the World Rules tab) adds N accessory slots to the inventory's accessory page, each with its own vanity and dye slot, drawn in extra columns to the left of the normal ones. They are real slots drawn and handled by the game's own slot code and behave like the vanilla ones: stats and effects, wings, appearance and dyes, with the usual rules (the same accessory twice is refused, one pair of wings, and so on). Like the extra pet slots they are stored per character in `TerraCompanion/Accessories/` and are not visible to other players. Needs a re-patch; `extraAccessories = 0` turns them off.
 - **Minions and pets:** `minionBonus` raises the base minion count (vanilla 1) that armor and accessories add to. Vanilla removes your old pet whenever you get a new one; `maxPets` / `maxLightPets` let several stay out (the oldest go once you pass the limit). Extra pets live on as buffs, so they persist with the character; the Character Editor can also add them under Buffs. With a limit above 1 the **Equipment tab** also gets extra pet / light pet slots (one per extra pet, up to 4 extra of each), drawn to the left of the pet rows with the game's own slot code, each with its own dye slot; a pet item placed in one is summoned like in the normal slot, and a dye recolours that pet. These extra slots are stored per character in `TerraCompanion/PetSlots/` (not in the character file, because the file format fixes the number of equipment slots at five and the multiplayer sync assumes it), and are not visible to other players (they see your pets in normal colours). `petSlots = 0` hides them.
 - **Appearance:** the app follows the Windows light / dark setting by default (Apple-style Light and Dark palettes); change it with the Appearance menu in the sidebar.
 
