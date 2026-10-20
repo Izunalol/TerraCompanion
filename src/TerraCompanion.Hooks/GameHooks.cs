@@ -18,7 +18,7 @@ namespace TerraCompanion.Hooks
     /// </summary>
     public static class GameHooks
     {
-        public const string Version = "8";
+        public const string Version = "9";
 
         // Terraria's true vanilla spawn settings. The multipliers in rules.txt are relative to these, NOT to whatever
         // the exe happens to contain (a hand-edited exe may already spawn several times faster).
@@ -93,6 +93,13 @@ namespace TerraCompanion.Hooks
         public static void ExtraAccDyesVanity(object player) { ExtraAccessories.DyesVanity(player); }
         public static void ExtraAccVisualsFunctional(object player) { ExtraAccessories.VisualsFunctional(player); }
         public static void ExtraAccVisualsVanity(object player) { ExtraAccessories.VisualsVanity(player); }
+
+        // ---- frame pacing / input latency (see Performance)
+        public static void PartialFrame() { Performance.PartialFrame(); }
+        public static void FrameTiming(object main) { Performance.FrameTiming(main); }
+        public static void BeforeFocus() { Performance.BeforeFocus(); }
+        public static bool FilterMouseVisible(bool vanilla) { return Performance.FilterMouseVisible(vanilla); }
+        public static bool HideGameCursor() { return Performance.HideGameCursor(); }
 
         /// <summary>Called at the end of Main.GetProjectileDesiredShader: lets a dye in an extra pet slot recolour that pet.</summary>
         public static int PetShader(int vanilla, object projectile) { return ExtraSlots.Shader(vanilla, projectile); }

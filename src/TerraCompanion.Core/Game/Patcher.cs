@@ -177,6 +177,31 @@ public static class Patcher
         else log.Add("Accessory code not recognised (different game version?): extra accessory slots disabled. Missing: "
             + string.Join(", ", new[] { "page", "UpdateEquips(functional)", "UpdateEquips(vanity)", "UpdateDyes", "PlayerFrame" }.Where((_, i) => accessoryPatches[i] == null)));
 
+        // Frame pacing / input latency: each insertion stands alone, so each one logs its own result.
+        var doUpdate = main?.Methods.FirstOrDefault(x => x.Name == "DoUpdate" && x.HasBody);
+        var focus = mod.GetType("Terraria.FocusHelper")?.Methods.FirstOrDefault(x => x.Name == "UpdateFocus" && x.HasBody);
+        var cursorMethods = new[] { "DrawCursor", "DrawThickCursor" }
+            .Select(n => main?.Methods.FirstOrDefault(x => x.Name == n && x.HasBody)).ToList();
+        var paced = new[] { doUpdate, focus }.Concat(cursorMethods).Where(x => x != null).Select(x => x!.Body).ToList();
+        foreach (var b in paced) b.SimplifyMacros(); // long branches while inserting; re-shortened below
+        log.Add(doUpdate != null && PatchPartialFrame(doUpdate, Hook("PartialFrame"))
+            ? "Hooked Main.DoUpdate partial frames (responsive mouse)."
+            : "Main.DoUpdate partial-frame code not recognised: responsive mouse disabled.");
+        log.Add(doUpdate != null && PatchFrameTiming(doUpdate, Hook("FrameTiming"))
+            ? "Hooked Main.DoUpdate frame timing (VSync / FPS cap)."
+            : "Main.DoUpdate frame-timing code not recognised: VSync / FPS cap options disabled.");
+        // DrawCursor first resets the smart-interact state (keep that), then draws: skip only from the first instruction after the reset.
+        var drawCursor = cursorMethods[0];
+        var afterReset = drawCursor?.Body.Instructions.LastOrDefault(i => i.OpCode == OpCodes.Stsfld && i.Operand is FieldReference f && f.Name.StartsWith("TileInteraction"))?.Next;
+        if (focus != null && afterReset != null && cursorMethods[1] != null && PatchFocus(focus, Hook("BeforeFocus"), Hook("FilterMouseVisible")))
+        {
+            SkipWhen(drawCursor!, Hook("HideGameCursor"), afterReset);
+            SkipWhen(cursorMethods[1]!, Hook("HideGameCursor"));
+            log.Add("Hooked the cursor drawing and FocusHelper (Windows cursor option).");
+        }
+        else log.Add("Cursor code not recognised: Windows cursor option disabled.");
+        foreach (var b in paced) b.OptimizeMacros();
+
         // Marker type so we can recognise a patched exe.
         mod.Types.Add(new TypeDefinition("", MarkerAttribute, TypeAttributes.NotPublic | TypeAttributes.Sealed | TypeAttributes.Abstract, mod.TypeSystem.Object));
 
@@ -417,6 +442,73 @@ public static class Patcher
     }
 
     /// <summary>Points every branch that targeted <paramref name="from"/> at <paramref name="to"/> instead (code inserted before an anchor).</summary>
+    /// <summary>
+    /// With Frame Skip Off, DoUpdate returns early on frames that are drawn but not simulated:
+    /// "if (accumulator &lt; frameTime) { if (...) SuppressDraw(); return; }". The only SuppressDraw directly followed by ret.
+    /// hook() runs just before that ret.
+    /// </summary>
+    static bool PatchPartialFrame(MethodDefinition m, MethodReference hook)
+    {
+        var rets = m.Body.Instructions.Where(i => i.OpCode == OpCodes.Ret && i.Previous is { OpCode.Code: Code.Callvirt } p
+                                                  && p.Operand is MethodReference r && r.Name == "SuppressDraw").ToList();
+        if (rets.Count != 1) return false;
+        var il = m.Body.GetILProcessor();
+        var call = il.Create(OpCodes.Call, hook);
+        il.InsertBefore(rets[0], call);
+        RetargetBranches(m.Body, rets[0], call); // the "no SuppressDraw" branch jumps straight to the ret
+        return true;
+    }
+
+    /// <summary>DoUpdate sets IsFixedTimeStep / VSync for the frame-skip mode in an if/else; hook(this) runs where the branches meet.</summary>
+    static bool PatchFrameTiming(MethodDefinition m, MethodReference hook)
+    {
+        var sets = m.Body.Instructions.Where(i => i.Operand is MethodReference r && r.Name == "set_SynchronizeWithVerticalRetrace").ToList();
+        if (sets.Count != 2 || sets[1].Next == null) return false;
+        var join = sets[1].Next;
+        if (!m.Body.Instructions.Any(i => i.Operand == join)) return false; // must be the merge point of the if/else
+        var il = m.Body.GetILProcessor();
+        var load = il.Create(OpCodes.Ldarg_0);
+        il.InsertBefore(join, load);
+        il.InsertBefore(join, il.Create(OpCodes.Call, hook));
+        RetargetBranches(m.Body, join, load);
+        return true;
+    }
+
+    /// <summary>FocusHelper.UpdateFocus: before() at the start, and every IsMouseVisible = x becomes IsMouseVisible = filter(x).</summary>
+    static bool PatchFocus(MethodDefinition m, MethodReference before, MethodReference filter)
+    {
+        var sets = m.Body.Instructions.Where(i => i.Operand is MethodReference r && r.Name == "set_IsMouseVisible").ToList();
+        if (sets.Count == 0) return false;
+        var il = m.Body.GetILProcessor();
+        foreach (var s in sets) il.InsertBefore(s, il.Create(OpCodes.Call, filter));
+        var first = m.Body.Instructions[0];
+        var call = il.Create(OpCodes.Call, before);
+        il.InsertBefore(first, call);
+        RetargetBranches(m.Body, first, call);
+        return true;
+    }
+
+    /// <summary>Inserts "if (hook()) return default;" at <paramref name="at"/> (default: the start) of a method returning void or a value type.</summary>
+    static void SkipWhen(MethodDefinition m, MethodReference hook, Instruction? at = null)
+    {
+        var il = m.Body.GetILProcessor();
+        var first = at ?? m.Body.Instructions[0];
+        var head = new List<Instruction> { il.Create(OpCodes.Call, hook), il.Create(OpCodes.Brfalse, first) };
+        if (m.ReturnType.MetadataType != MetadataType.Void)
+        {
+            var tmp = new VariableDefinition(m.ReturnType);
+            m.Body.Variables.Add(tmp);
+            m.Body.InitLocals = true;
+            head.Add(il.Create(OpCodes.Ldloca, tmp));
+            head.Add(il.Create(OpCodes.Initobj, m.ReturnType));
+            head.Add(il.Create(OpCodes.Ldloc, tmp));
+        }
+        head.Add(il.Create(OpCodes.Ret));
+        foreach (var i in head) il.InsertBefore(first, i);
+        if (at != null) RetargetBranches(m.Body, first, head[0]); // jumps to the anchor must pass the check too (except our own brfalse)
+        head[1].Operand = first;
+    }
+
     static void RetargetBranches(MethodBody body, Instruction from, Instruction to)
     {
         foreach (var i in body.Instructions)

@@ -24,7 +24,11 @@ minionBonus = 5                      extra minion slots (vanilla 0)
 maxPets = 3                          pets out at once (vanilla 1)
 maxLightPets = 2                     light pets out at once (vanilla 1)
 petSlots = 0                         hide the extra pet equipment slots (default: shown)
-extraAccessories = 4                  extra accessory slots (0-14), each with a vanity and a dye slot
+extraAccessories = 4                 extra accessory slots (0-14), each with a vanity and a dye slot
+nativeCursor = 1                     use the Windows cursor (no cursor lag)
+responsiveMouse = 1                  read the mouse every drawn frame (Frame Skip Off)
+vsync = 0                            turn off the VSync vanilla forces (Frame Skip Off)
+fpsCap = 144                         frame-rate cap, 60-1000 (0 = none)
 sundialCooldown = 2                  Enchanted Sundial cooldown in days (vanilla 8)
 moondialCooldown = 0                 Enchanted Moondial cooldown in days (0 = every night)
 static Terraria.Item.potionDelay = 1800   any static field, by full type name

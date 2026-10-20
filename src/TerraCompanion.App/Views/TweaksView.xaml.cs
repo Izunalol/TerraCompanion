@@ -212,6 +212,41 @@ public partial class TweaksView : UserControl, IPage
                 Style = (Style)FindResource("Hint"), Margin = new Thickness(22, 8, 0, 0), Foreground = (System.Windows.Media.Brush)FindResource("Bad"),
                 Text = "Terraria's own \"Support4K\" option is off in config.json. It will be switched on when you tick this box (game closed)."
             });
+
+        // ---- smoothness and input lag (ideas from the tModLoader mods HighFPSSupport and NativeCursor)
+        var rules = AppState.Rules;
+        DisplayPanel.Children.Add(new TextBlock { Text = "Smoothness and input lag", FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 16, 0, 2) });
+        DisplayPanel.Children.Add(new TextBlock
+        {
+            Style = (Style)FindResource("Hint"), Margin = new Thickness(0, 0, 0, 6),
+            Text = "With Frame Skip Off the game already draws at your monitor's refresh rate, but it reads the mouse only 60 times a second and forces VSync. " +
+                   "These options take effect within a second, no restart needed. The world still runs at 60 ticks per second either way."
+        });
+        if (GameConfig.ReadFrameSkipMode(AppState.SaveDir) is int fs && fs != 0)
+            DisplayPanel.Children.Add(new TextBlock
+            {
+                Style = (Style)FindResource("Hint"), Margin = new Thickness(0, 0, 0, 6), Foreground = (System.Windows.Media.Brush)FindResource("Bad"),
+                Text = "Your Frame Skip is not Off (Settings → Video → Frame Skip). These options only work with Frame Skip Off."
+            });
+        DisplayPanel.Children.Add(Toggle("Use the Windows cursor", rules.NativeCursor, v => rules.NativeCursor = v,
+            "The system cursor moves instantly, without the frame of delay the drawn cursor has (most noticeable with VSync). Tooltips, the item you hold and smart-cursor highlights still work. Controllers keep the game's cursor."));
+        DisplayPanel.Children.Add(Toggle("Update the mouse every frame", rules.ResponsiveMouse, v => rules.ResponsiveMouse = v,
+            "Re-reads the mouse position on every drawn frame instead of 60 times a second, so hover highlights, the held item and aim follow the mouse at your refresh rate. Clicks are still handled once per tick, as in vanilla."));
+        DisplayPanel.Children.Add(Toggle("VSync", rules.VSync, v => rules.VSync = v,
+            "Vanilla forces VSync on. Off lowers input lag and lets the frame rate go above your refresh rate, but can cause tearing; pair it with an FPS cap at your refresh rate."));
+        DisplayPanel.Children.Add(CountRow("FPS cap",
+            "Limits the frame rate (60-1000). Capping at your monitor's refresh rate reduces stutter and lag; 0 = no cap.",
+            0, 0, 1000, () => rules.FpsCap, v => rules.FpsCap = v == 0 ? 0 : Math.Max(60, v), "fps"));
+    }
+
+    FrameworkElement Toggle(string label, bool value, Action<bool> set, string hint)
+    {
+        var panel = new StackPanel { Margin = new Thickness(0, 4, 0, 4) };
+        var cb = new CheckBox { IsChecked = value, Content = new TextBlock { Text = label, FontWeight = FontWeights.SemiBold } };
+        cb.Click += (_, _) => { set(cb.IsChecked == true); AppState.RulesEdited(this); };
+        panel.Children.Add(cb);
+        panel.Children.Add(new TextBlock { Style = (Style)FindResource("Hint"), Margin = new Thickness(22, 0, 0, 0), Text = hint });
+        return panel;
     }
 
     // ---------------------------------------------------------------- rows

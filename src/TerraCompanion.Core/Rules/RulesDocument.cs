@@ -46,6 +46,9 @@ public sealed class RulesDocument
     public bool PetSlots = true;
     /// <summary>Extra accessory slots, each with its own vanity and dye slot (0 = vanilla).</summary>
     public int ExtraAccessories;
+    /// <summary>Frame pacing / input latency (Frame Skip Off only): re-read the mouse every frame, Windows cursor, VSync, FPS cap (0 = none).</summary>
+    public bool ResponsiveMouse, NativeCursor, VSync = true;
+    public int FpsCap;
     public readonly SortedDictionary<string, string> Statics = new(StringComparer.Ordinal);
     public readonly List<FieldRule> Items = new();
     public readonly List<FieldRule> Npcs = new();
@@ -73,6 +76,13 @@ public sealed class RulesDocument
             }
             else if (head == "extraaccessories" && t.Length == 3 && t[1] == "=" && int.TryParse(t[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out int extraAcc) && extraAcc >= 0)
                 d.ExtraAccessories = Math.Min(14, extraAcc);
+            else if ((head == "responsivemouse" || head == "nativecursor" || head == "vsync") && t.Length == 3 && t[1] == "=")
+            {
+                bool on = !(t[2] == "0" || t[2].Equals("false", StringComparison.OrdinalIgnoreCase) || t[2].Equals("off", StringComparison.OrdinalIgnoreCase));
+                if (head == "responsivemouse") d.ResponsiveMouse = on; else if (head == "nativecursor") d.NativeCursor = on; else d.VSync = on;
+            }
+            else if (head == "fpscap" && t.Length == 3 && t[1] == "=" && int.TryParse(t[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out int cap) && (cap == 0 || cap >= 60))
+                d.FpsCap = Math.Min(1000, cap);
             else if (head == "petslots" && t.Length == 3 && t[1] == "=") d.PetSlots = !(t[2] == "0" || t[2].Equals("false", StringComparison.OrdinalIgnoreCase) || t[2].Equals("off", StringComparison.OrdinalIgnoreCase));
             else if ((head == "minionbonus" || head == "maxpets" || head == "maxlightpets") && t.Length == 3 && t[1] == "="
                      && int.TryParse(t[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out int count) && count >= 0)
@@ -124,6 +134,10 @@ public sealed class RulesDocument
         if (MaxLightPets > 1) sb.AppendLine($"maxLightPets = {MaxLightPets}");
         if (!PetSlots) sb.AppendLine("petSlots = 0");
         if (ExtraAccessories > 0) sb.AppendLine($"extraAccessories = {ExtraAccessories}");
+        if (ResponsiveMouse) sb.AppendLine("responsiveMouse = 1");
+        if (NativeCursor) sb.AppendLine("nativeCursor = 1");
+        if (!VSync) sb.AppendLine("vsync = 0");
+        if (FpsCap > 0) sb.AppendLine($"fpsCap = {FpsCap}");
         if (SundialDays is int sun) sb.AppendLine($"sundialCooldown = {sun}");
         if (MoondialDays is int moon) sb.AppendLine($"moondialCooldown = {moon}");
         foreach (var (k, v) in Statics) sb.AppendLine($"static {k} = {v}");

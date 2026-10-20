@@ -28,6 +28,10 @@ namespace TerraCompanion.Hooks
         public bool PetSlots = true;
         /// <summary>Extra accessory slots (each with its own vanity and dye slot) on the accessory page; 0 = vanilla.</summary>
         public int ExtraAccessories;
+        /// <summary>Frame-pacing / input-latency options (see Performance). Only apply with Frame Skip Off.</summary>
+        public bool ResponsiveMouse, NativeCursor, VSync = true;
+        /// <summary>Frame-rate cap (0 = none / vanilla).</summary>
+        public int FpsCap;
         public readonly List<StaticRule> Statics = new List<StaticRule>();
         public readonly List<FieldRule> ItemSelectors = new List<FieldRule>();
         public readonly Dictionary<int, List<FieldRule>> ItemById = new Dictionary<int, List<FieldRule>>();
@@ -70,6 +74,19 @@ namespace TerraCompanion.Hooks
                 int n = int.Parse(t[2], CultureInfo.InvariantCulture);
                 if (n < 0 || n > 14) throw new Exception("extraAccessories must be between 0 and 14");
                 ExtraAccessories = n;
+                return;
+            }
+            if ((head == "responsivemouse" || head == "nativecursor" || head == "vsync") && t.Length == 3 && t[1] == "=")
+            {
+                bool on = !(t[2] == "0" || t[2].ToLowerInvariant() == "false" || t[2].ToLowerInvariant() == "off");
+                if (head == "responsivemouse") ResponsiveMouse = on; else if (head == "nativecursor") NativeCursor = on; else VSync = on;
+                return;
+            }
+            if (head == "fpscap" && t.Length == 3 && t[1] == "=")
+            {
+                int n = int.Parse(t[2], CultureInfo.InvariantCulture);
+                if (n != 0 && (n < 60 || n > 1000)) throw new Exception("fpsCap must be 0 (off) or between 60 and 1000");
+                FpsCap = n;
                 return;
             }
             if (head == "petslots" && t.Length == 3 && t[1] == "=")

@@ -21,6 +21,19 @@ public static class GameConfig
         catch { return null; }
     }
 
+    static readonly Regex FrameSkip = new("\"FrameSkipMode\"\\s*:\\s*(\\d+)", RegexOptions.Compiled);
+
+    /// <summary>Frame Skip setting: 0 = Off, 1 = On, 2 = Subtle. Null if unknown.</summary>
+    public static int? ReadFrameSkipMode(string saveDir)
+    {
+        try
+        {
+            var m = FrameSkip.Match(File.ReadAllText(Path(saveDir)));
+            return m.Success ? int.Parse(m.Groups[1].Value) : null;
+        }
+        catch { return null; }
+    }
+
     /// <summary>Saved fullscreen / window resolution, e.g. 2560x1440.</summary>
     public static (int width, int height)? ReadResolution(string saveDir)
     {
