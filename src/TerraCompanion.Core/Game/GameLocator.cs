@@ -80,7 +80,7 @@ public static class GameLocator
 
     public static bool IsGameRunning()
     {
-        try { return System.Diagnostics.Process.GetProcessesByName("Terraria").Length > 0; }
+        try { return System.Diagnostics.Process.GetProcessesByName("Terraria").Length + System.Diagnostics.Process.GetProcessesByName("Terraria64").Length > 0; }
         catch { return false; }
     }
 }

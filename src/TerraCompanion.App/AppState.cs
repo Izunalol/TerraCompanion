@@ -12,6 +12,8 @@ public sealed class Settings
     public string? SaveDir { get; set; }
     /// <summary>"auto" (follow Windows), "light" or "dark".</summary>
     public string Theme { get; set; } = "auto";
+    /// <summary>The Launch button starts the 64-bit build (TerraCompanion64) instead of vanilla Terraria through Steam.</summary>
+    public bool Launch64 { get; set; }
 
     static string FilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TerraCompanion", "settings.json");
 
@@ -47,6 +49,25 @@ public static class AppState
     public static string SaveDir => string.IsNullOrWhiteSpace(Settings.SaveDir) ? GameLocator.DefaultSaveDir : Settings.SaveDir!;
     public static string RulesPath => GameLocator.RulesPath(SaveDir);
     public static string CompanionDir => GameLocator.CompanionDir(SaveDir);
+    /// <summary>Writes the embedded 64-bit launcher files to a temporary folder and returns it.</summary>
+    public static string ExtractLauncher64()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "TerraCompanion-launcher64");
+        Directory.CreateDirectory(dir);
+        foreach (var f in Directory.GetFiles(dir)) File.Delete(f);
+        var asm = typeof(AppState).Assembly;
+        int n = 0;
+        foreach (var name in asm.GetManifestResourceNames().Where(r => r.StartsWith("Launcher64/")))
+        {
+            using var res = asm.GetManifestResourceStream(name)!;
+            using var file = File.Create(Path.Combine(dir, name["Launcher64/".Length..]));
+            res.CopyTo(file);
+            n++;
+        }
+        if (n == 0) throw new InvalidOperationException("The 64-bit launcher is missing from this build of TerraCompanion.");
+        return dir;
+    }
+
     /// <summary>
     /// The hooks DLL the patcher installs. Uses the copy next to the app when there is one (normal builds),
     /// otherwise extracts the copy embedded in the exe (single-file download).

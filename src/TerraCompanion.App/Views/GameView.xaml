@@ -36,10 +36,33 @@
           <WrapPanel Margin="0,14,0,0">
             <Button x:Name="PatchButton" Style="{StaticResource Primary}" Content="Patch game" Click="Patch_Click"/>
             <Button x:Name="RestoreButton" Style="{StaticResource Danger}" Content="Restore original" Click="Restore_Click"/>
-            <Button Content="▶ Launch Terraria" Click="Launch_Click"/>
+            <Button x:Name="LaunchButton" Content="▶ Launch Terraria" Click="Launch_Click"/>
             <CheckBox x:Name="ServerCheck" Content="Also patch TerrariaServer.exe (for dedicated servers)" Margin="10,0,0,0" VerticalAlignment="Center"/>
           </WrapPanel>
           <TextBlock x:Name="PatchLog" Style="{StaticResource Hint}" Margin="0,10,0,0" FontFamily="Consolas"/>
+        </StackPanel>
+      </Border>
+
+      <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+        <StackPanel>
+          <DockPanel>
+            <Ellipse x:Name="Status64Dot" Width="12" Height="12" Fill="{DynamicResource Muted}" Margin="0,0,10,0" VerticalAlignment="Center"/>
+            <StackPanel>
+              <TextBlock FontSize="16" FontWeight="SemiBold"><Run Text="64-bit Terraria"/><Run Text="  experimental" FontSize="12" Foreground="{DynamicResource Warn}"/></TextBlock>
+              <TextBlock x:Name="Status64Detail" Style="{StaticResource Hint}" TextWrapping="Wrap"/>
+            </StackPanel>
+          </DockPanel>
+          <TextBlock Style="{StaticResource Hint}" Margin="22,8,0,0" TextWrapping="Wrap"
+                     Text="Builds a separate copy of your (patched) vanilla game that runs as a 64-bit .NET 8 program on FNA, the engine tModLoader uses, instead of the 32-bit .NET Framework and XNA. Same game version, saves, settings, Steam and multiplayer; your normal Terraria.exe is not touched. FNA and the 64-bit Steam library come from your tModLoader install."/>
+          <WrapPanel Margin="0,12,0,0">
+            <Button x:Name="Build64Button" Style="{StaticResource Primary}" Content="Build 64-bit version" Click="Build64_Click"/>
+            <Button x:Name="Launch64Button" Content="▶ Launch 64-bit" Click="Launch64_Click"/>
+            <Button x:Name="Remove64Button" Style="{StaticResource Danger}" Content="Remove" Click="Remove64_Click"/>
+          </WrapPanel>
+          <CheckBox x:Name="Prefer64Check" Margin="0,10,0,0" Click="Prefer64_Click">
+            <TextBlock Text="Make ▶ Launch Terraria start the 64-bit version" FontWeight="SemiBold"/>
+          </CheckBox>
+          <TextBlock x:Name="Log64" Style="{StaticResource Hint}" Margin="0,10,0,0" FontFamily="Consolas" TextWrapping="Wrap"/>
         </StackPanel>
       </Border>
 

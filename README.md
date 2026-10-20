@@ -70,6 +70,14 @@ npc boss lifeMax *= 2                      # selectors: id (negatives too), *, b
 
 Group rules run first, then id rules, so an id rule always wins. Fields are any public number or true/false field on `Terraria.Item` / `Terraria.NPC`.
 
+## 64-bit Terraria (experimental)
+
+The Game & Patch page can build a **64-bit copy of your (patched) vanilla game** that runs on .NET 8 with FNA, the engine tModLoader uses, instead of the 32-bit .NET Framework and XNA. Unlike tModLoader it stays on your current vanilla version. It goes in a `TerraCompanion64` folder next to the game; your `Terraria.exe` is not touched, and saves, settings, Steam and multiplayer are the same. Launch it from the app (optionally make the main Launch button use it).
+
+The game is converted, not decompiled: XNA references in Terraria and its embedded ReLogic library are pointed at FNA, the 32-bit flag is cleared, the few Windows-only window/focus spots use the code paths vanilla already has for its FNA (Linux/Mac) builds, ReLogic uses its SDL window service and FNA text input, a newer 64-bit Steamworks.NET replaces the embedded one, and a handful of .NET Framework-only calls are replaced. A small .NET 8 launcher (`Terraria64.exe`) starts it.
+
+Needs **tModLoader installed through Steam** (its FNA, native libraries and 64-bit Steam API are used, so nothing is redistributed) and the **.NET 8 Desktop Runtime (x64)**. Not available in the 64-bit build: Asian-language IME composition, Razer/Corsair RGB lighting, vanilla's borderless-window mode (FNA's fullscreen is used), and texture packs that ship raw `.fx` shader source. Re-patching rebuilds the copy automatically; after a Steam update, re-patch.
+
 ## Notes and limits
 
 - **Smoothness and input lag** (ideas from the tModLoader mods HighFPSSupport and NativeCursor, reimplemented): with Frame Skip Off, vanilla already draws at your refresh rate but reads the mouse only 60 times a second and forces VSync. `responsiveMouse` re-reads the mouse position on every drawn frame, `nativeCursor` shows the Windows cursor instead of the drawn one, and `vsync = 0` / `fpsCap = N` replace the forced VSync. The world still simulates at 60 ticks per second. Not ported: HighFPSSupport's motion smoothing (in-between frames for every entity) and its tile/lighting rendering rewrites, which depend on tModLoader's hook system and custom shaders.
@@ -93,6 +101,7 @@ Group rules run first, then id rules, so an id rule always wins. Fields are any 
 | `src/TerraCompanion.Core` | Save parsers (`PlayerFile`, `WorldFile`), LZX/XNB texture decoder, map-palette extractor, `GameData` (IDs and names read from Terraria.exe), patcher, rules model |
 | `src/TerraCompanion.Hooks` | .NET Framework 4.0 DLL loaded by the patched game (reflection only, no game reference) |
 | `src/TerraCompanion.App` | WPF app |
+| `src/TerraCompanion.Launcher64` | .NET 8 x64 launcher for the 64-bit build (`Terraria64.exe --verify` JIT-checks the converted game without opening a window) |
 | `tools/SelfTest` | Developer checks: `players`, `world`, `gamedata`, `xnb`, `patch`, `edit` (run against copies of your files) |
 | `tools/IconGen` | Draws the pixel-art tree app icon (`dotnet run --project tools/IconGen -- <outDir>`) |
 

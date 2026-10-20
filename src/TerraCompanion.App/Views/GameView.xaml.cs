@@ -47,7 +47,76 @@ public partial class GameView : UserControl, IPage
             PatchButton.Content = s.State == PatchState.Vanilla ? "Patch game" : "Re-patch game";
             RestoreButton.IsEnabled = s.BackupExists && s.State != PatchState.Vanilla;
         }
+        Refresh64();
         LoadLog();
+    }
+
+    // ---------------------------------------------------------------- 64-bit build
+
+    void Refresh64()
+    {
+        var dir = AppState.GameDir;
+        string? tml = dir == null ? null : Port64.FindTModLoader(dir);
+        bool runtime = Port64.DesktopRuntimeInstalled();
+        bool built = dir != null && Port64.IsBuilt(dir);
+        Build64Button.IsEnabled = dir != null && tml != null;
+        Build64Button.Content = built ? "Rebuild 64-bit version" : "Build 64-bit version";
+        Launch64Button.IsEnabled = built && runtime;
+        Remove64Button.IsEnabled = built;
+
+        string brush, text;
+        if (dir == null) { brush = "Muted"; text = "Point TerraCompanion at your Terraria folder first."; }
+        else if (tml == null) { brush = "Bad"; text = "Needs tModLoader installed through Steam (next to Terraria): the 64-bit build uses its FNA and 64-bit Steam libraries. You don't have to play it."; }
+        else if (!runtime) { brush = "Warn"; text = "Needs the .NET 8 Desktop Runtime (x64), free from Microsoft: dotnet.microsoft.com/download/dotnet/8.0 → \".NET Desktop Runtime\" → Windows x64."; }
+        else if (!built) { brush = "Muted"; text = "Not built yet. Building takes a few seconds and adds a TerraCompanion64 folder to the game folder."; }
+        else if (Port64.NeedsRebuild(dir)) { brush = "Warn"; text = "Terraria.exe changed since the 64-bit version was built (re-patch or Steam update). Rebuild it to match."; }
+        else { brush = "Good"; text = "Ready. Launch it here; Steam shows it as Terraria."; }
+        Status64Dot.Fill = (Brush)FindResource(brush);
+        Status64Detail.Text = text;
+        Prefer64Check.IsChecked = AppState.Settings.Launch64;
+        Prefer64Check.IsEnabled = built || AppState.Settings.Launch64;
+        LaunchButton.Content = AppState.Settings.Launch64 && built ? "▶ Launch Terraria (64-bit)" : "▶ Launch Terraria";
+    }
+
+    void Prefer64_Click(object sender, RoutedEventArgs e)
+    {
+        AppState.Settings.Launch64 = Prefer64Check.IsChecked == true;
+        AppState.Settings.Save();
+        Refresh64();
+    }
+
+    async void Build64_Click(object sender, RoutedEventArgs e)
+    {
+        if (AppState.GameDir is not { } dir || Port64.FindTModLoader(dir) is not { } tml) return;
+        if (!EnsureGameClosed()) return;
+        Build64Button.IsEnabled = false;
+        Log64.Text = "Building the 64-bit version...";
+        try
+        {
+            Log64.Text = await Task.Run(() => Port64.Build(dir, tml, AppState.ExtractLauncher64()));
+            MainWindow.Instance?.SetStatus("64-bit version built.");
+        }
+        catch (UnauthorizedAccessException) { Log64.Text = "Access denied writing to the game folder - run TerraCompanion as administrator once."; }
+        catch (Exception ex) { Log64.Text = "Build failed: " + ex.Message; }
+        Refresh64();
+    }
+
+    void Launch64_Click(object sender, RoutedEventArgs e)
+    {
+        if (AppState.GameDir is not { } dir) return;
+        if (GameLocator.IsGameRunning()) { MessageBox.Show("Terraria is already running.", "Terraria is running"); return; }
+        if (Port64.NeedsRebuild(dir) && MessageBox.Show("Terraria.exe changed since the 64-bit version was built (re-patch or Steam update). Launch the old 64-bit build anyway?",
+                "Rebuild recommended", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        var outDir = Port64.OutputDir(dir);
+        Process.Start(new ProcessStartInfo(Path.Combine(outDir, Port64.LauncherExe)) { WorkingDirectory = outDir, UseShellExecute = false });
+    }
+
+    void Remove64_Click(object sender, RoutedEventArgs e)
+    {
+        if (AppState.GameDir is not { } dir || !EnsureGameClosed()) return;
+        try { Port64.Remove(dir); Log64.Text = "Removed the 64-bit version (your game and its Content folder are untouched)."; }
+        catch (Exception ex) { Log64.Text = "Remove failed: " + ex.Message; }
+        Refresh64();
     }
 
     void SetStatus(string title, string detail, string brush)
@@ -91,6 +160,12 @@ public partial class GameView : UserControl, IPage
                 if (server != null) l += Environment.NewLine + "--- TerrariaServer.exe" + Environment.NewLine + Patcher.Patch(server, AppState.HooksDll);
                 return l;
             });
+            // keep the 64-bit copy in step with the freshly patched game
+            if (AppState.GameDir is { } gd && Port64.IsBuilt(gd) && Port64.FindTModLoader(gd) is { } tml)
+            {
+                try { await Task.Run(() => Port64.Build(gd, tml, AppState.ExtractLauncher64())); log += Environment.NewLine + "Rebuilt the 64-bit version."; }
+                catch (Exception ex) { log += Environment.NewLine + "64-bit rebuild failed: " + ex.Message; }
+            }
             PatchLog.Text = log;
             if (!File.Exists(AppState.RulesPath)) AppState.SaveRulesNow();
             MainWindow.Instance?.SetStatus("Game patched. Launch Terraria and your rules are live.");
@@ -118,6 +193,11 @@ public partial class GameView : UserControl, IPage
 
     void Launch_Click(object sender, RoutedEventArgs e)
     {
+        if (AppState.Settings.Launch64 && AppState.GameDir is { } dir && Port64.IsBuilt(dir))
+        {
+            Launch64_Click(sender, e);
+            return;
+        }
         try { Process.Start(new ProcessStartInfo($"steam://rungameid/{GameLocator.SteamAppId}") { UseShellExecute = true }); }
         catch
         {

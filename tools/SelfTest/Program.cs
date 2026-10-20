@@ -81,6 +81,10 @@ switch (args[0])
         break;
     }
 
+    case "port64": // port64 <gameDirWithTerrariaExe> <tModLoaderDir> <launcherDir> <outDir>
+        Console.WriteLine(TerraCompanion.Core.Game.Port64.Build(args[1], args[2], args[3], args[4]));
+        break;
+
     case "patch": // patch <copyOfTerraria.exe> <hooks.dll>
     {
         Console.WriteLine(TerraCompanion.Core.Game.Patcher.GetStatus(args[1], args[2]));

@@ -11,7 +11,7 @@
     <RootNamespace>TerraCompanion.App</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets/TerraCompanion.ico</ApplicationIcon>
-    <Version>1.7.0</Version>
+    <Version>1.8.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -24,12 +24,23 @@
     <ProjectReference Include="..\TerraCompanion.Core\TerraCompanion.Core.csproj" />
     <!-- The hooks DLL runs inside Terraria (.NET Framework). Build it, ship it next to the app, never load it here. -->
     <ProjectReference Include="..\TerraCompanion.Hooks\TerraCompanion.Hooks.csproj" ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true" />
+    <!-- The 64-bit launcher (.NET 8, x64): built, embedded, written next to the converted game. -->
+    <ProjectReference Include="..\TerraCompanion.Launcher64\TerraCompanion.Launcher64.csproj" ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true" GlobalPropertiesToRemove="RuntimeIdentifier;SelfContained" />
   </ItemGroup>
 
   <ItemGroup>
     <!-- Also embedded, so a single-file TerraCompanion.exe can patch the game on its own. -->
     <EmbeddedResource Include="..\TerraCompanion.Hooks\bin\$(Configuration)\net40\TerraCompanion.Hooks.dll" LogicalName="TerraCompanion.Hooks.dll" />
   </ItemGroup>
+
+  <!-- after the launcher project has built (a static wildcard would be evaluated before its files exist on a clean build) -->
+  <Target Name="EmbedLauncher64" AfterTargets="ResolveProjectReferences" BeforeTargets="PrepareResources">
+    <ItemGroup>
+      <_Launcher64 Include="..\TerraCompanion.Launcher64\bin\$(Configuration)\net8.0-windows\win-x64\Terraria64.*" />
+      <EmbeddedResource Include="@(_Launcher64)" LogicalName="Launcher64/%(_Launcher64.Filename)%(_Launcher64.Extension)" />
+    </ItemGroup>
+    <Error Condition="!Exists('..\TerraCompanion.Launcher64\bin\$(Configuration)\net8.0-windows\win-x64\Terraria64.exe')" Text="The 64-bit launcher was not built." />
+  </Target>
 
   <ItemGroup>
     <Resource Include="Assets/TerraCompanion.ico" />
